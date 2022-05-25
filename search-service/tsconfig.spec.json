@@ -1,0 +1,10 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "moduleResolution": "node",
+        "rootDir": "./test",
+        "typeRoots": ["node_modules/@types"],
+        "types": ["jest", "@types/jest", "node", "node_modules/**/*.d.ts"]
+    },
+    "include": ["test", "src/**/*.spec.ts", "test/**/*.spec.ts"]
+}

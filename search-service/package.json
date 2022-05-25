@@ -1,0 +1,53 @@
+{
+    "name": "openslides-search-service",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "scripts": {
+        "test": "jest --passWithNoTests --detectOpenHandles",
+        "cleanup": "npm run prettify-write && npm run lint-write",
+        "start": "node build/src/server.js",
+        "dev": "nodemon src/server.ts",
+        "lint-write": "eslint --fix -c .eslintrc.js --ext .ts src",
+        "prettify-write": "prettier --config ./.prettierrc --write \"src/**/*{.ts,.js,.json,.css,.scss}\"",
+        "lint-check": "eslint -c .eslintrc.js --ext .ts src",
+        "prettify-check": "prettier --config ./.prettierrc --list-different \"src/**/*{.ts,.js,.json,.css,.scss}\"",
+        "build-ts": "tsc --project tsconfig.app.json",
+        "build": "tsc --project tsconfig.app.json"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/GabrielInTheWorld/openslides-search-service.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/GabrielInTheWorld/openslides-search-service/issues"
+    },
+    "homepage": "https://github.com/GabrielInTheWorld/openslides-search-service#readme",
+    "dependencies": {
+        "axios": "^0.27.2",
+        "express": "^4.18.1",
+        "final-di": "^1.0.10-alpha.1",
+        "pg": "^8.7.3",
+        "rest-app": "^1.0.0-alpha.10",
+        "tslib": "^2.4.0"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.13",
+        "@types/jest": "^27.5.2",
+        "@types/node": "^17.0.35",
+        "@types/pg": "^8.6.5",
+        "eslint": "^8.16.0",
+        "eslint-plugin-import": "^2.26.0",
+        "eslint-plugin-jsdoc": "^39.3.1",
+        "eslint-plugin-prefer-arrow": "^1.2.3",
+        "jest": "^28.1.0",
+        "nodemon": "^2.0.16",
+        "prettier": "^2.6.2",
+        "ts-jest": "^28.0.3",
+        "ts-node": "^10.8.0",
+        "typescript": "^4.7.2"
+    }
+}

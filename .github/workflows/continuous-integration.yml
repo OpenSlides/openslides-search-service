@@ -1,0 +1,46 @@
+name: CI
+
+on: [push, pull_request]
+jobs:
+  build-and-test-prod-image:
+    name: Build and test production image
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build docker prod image
+        run: make build-prod
+
+      - name: Run prod image
+        working-directory: .github/startup-test
+        run: docker-compose up -d
+
+      - name: Wait for the search-service
+        working-directory: .github/startup-test
+        run: docker-compose exec -T search-service ./wait-for.sh search-service:9022
+
+      - name: Test connection
+        working-directory: .github/startup-test
+        run: curl -I localhost:9022/system/search-service/health
+
+      - name: Stop prod containers
+        working-directory: .github/startup-test
+        run: docker-compose down --volumes
+
+  build-and-test-dev-image:
+    name: Build and test development image
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: make run-test
+
+      - name: Check prettify
+        run: make run-check-prettify
+
+      - name: Check lint
+        run: make run-check-lint
+
+      - name: Stop dev containers
+        run: make stop-dev

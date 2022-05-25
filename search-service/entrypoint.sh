@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+export DATASTORE_DATABASE_PORT="${DATASTORE_DATABASE_PORT:-5432}"
+
+./wait-for.sh --timeout=10 "$DATASTORE_DATABASE_HOST:$DATASTORE_DATABASE_PORT"
+
+exec "$@"
