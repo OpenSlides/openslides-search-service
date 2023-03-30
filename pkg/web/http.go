@@ -223,7 +223,7 @@ func Run(
 	mux := http.NewServeMux()
 
 	mux.Handle(
-		"/search",
+		"/system/search",
 		authMiddleware(http.HandlerFunc(c.search), auth))
 
 	addr := fmt.Sprintf("%s:%d", cfg.Web.Host, cfg.Web.Port)
