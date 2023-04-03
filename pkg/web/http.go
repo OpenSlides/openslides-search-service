@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -101,8 +102,15 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		}
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			log.Printf("error: copy restricter output failed: %v\n", err)
+
+		filteredResp, err := filterRestrictorResponse(resp.Body)
+		if err != nil {
+			handleErrorWithStatus(w, err)
+			return
+		}
+
+		if _, err := w.Write(filteredResp); err != nil {
+			log.Printf("error: writing response failed: %v\n", err)
 		}
 		return
 	}
@@ -114,6 +122,33 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(answers); err != nil {
 		log.Printf("error: %v\n", err)
 	}
+}
+
+// removes restriced results from restrictor response by checking
+// for id fields within the retured results
+func filterRestrictorResponse(body io.ReadCloser) ([]byte, error) {
+	respBody, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+
+	var restrictorResponse map[string]map[string]interface{}
+	if err := json.Unmarshal(respBody, &restrictorResponse); err != nil {
+		return nil, err
+	}
+
+	for k, v := range restrictorResponse {
+		if _, ok := v["id"]; !ok {
+			delete(restrictorResponse, k)
+		}
+	}
+
+	filteredContent, err := json.Marshal(restrictorResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return filteredContent, nil
 }
 
 func authMiddleware(next http.Handler, auth *auth.Auth) http.Handler {
