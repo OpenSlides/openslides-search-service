@@ -102,7 +102,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
 
-		filteredResp, err := filterRestrictorResponse(resp.Body)
+		filteredResp, err := filterRestricterResponse(resp.Body)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
@@ -123,26 +123,26 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// removes restriced results from restrictor response by checking
+// removes restriced results from restricter response by checking
 // for id fields within the retured results
-func filterRestrictorResponse(body io.ReadCloser) ([]byte, error) {
+func filterRestricterResponse(body io.ReadCloser) ([]byte, error) {
 	respBody, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
 
-	var restrictorResponse map[string]map[string]any
-	if err := json.Unmarshal(respBody, &restrictorResponse); err != nil {
+	var restricterResponse map[string]map[string]any
+	if err := json.Unmarshal(respBody, &restricterResponse); err != nil {
 		return nil, err
 	}
 
-	for k, v := range restrictorResponse {
+	for k, v := range restricterResponse {
 		if _, ok := v["id"]; !ok {
-			delete(restrictorResponse, k)
+			delete(restricterResponse, k)
 		}
 	}
 
-	filteredContent, err := json.Marshal(restrictorResponse)
+	filteredContent, err := json.Marshal(restricterResponse)
 	if err != nil {
 		return nil, err
 	}
