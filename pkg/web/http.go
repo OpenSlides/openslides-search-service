@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -127,12 +126,12 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 // removes restriced results from restrictor response by checking
 // for id fields within the retured results
 func filterRestrictorResponse(body io.ReadCloser) ([]byte, error) {
-	respBody, err := ioutil.ReadAll(body)
+	respBody, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
 
-	var restrictorResponse map[string]map[string]interface{}
+	var restrictorResponse map[string]map[string]any
 	if err := json.Unmarshal(respBody, &restrictorResponse); err != nil {
 		return nil, err
 	}
