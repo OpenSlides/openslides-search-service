@@ -89,7 +89,12 @@ func run(cfg *config.Config) error {
 
 	go authBackground(ctx, oserror.Handle)
 
-	return web.Run(ctx, cfg, authService, qs)
+	fields := make(map[string][]string)
+	for _, m := range searchModels.AsFilters() {
+		fields[m.Name] = append([]string{"id", "sequential_number"}, m.Items...)
+	}
+
+	return web.Run(ctx, cfg, authService, qs, &fields)
 }
 
 func main() {
