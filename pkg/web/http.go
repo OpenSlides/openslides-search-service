@@ -25,10 +25,10 @@ import (
 )
 
 type controller struct {
-	cfg    *config.Config
-	auth   *auth.Auth
-	qs     *search.QueryServer
-	fields *map[string][]string
+	cfg       *config.Config
+	auth      *auth.Auth
+	qs        *search.QueryServer
+	reqFields map[string][]string
 }
 
 /*
@@ -71,13 +71,13 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		*/
-		// Map of requested fields per collection
+
 		requestedFields := make(map[string][]string, 0)
 		for _, fqid := range answers {
 			collection, _, _ := strings.Cut(fqid, "/")
 			if _, ok := requestedFields[collection]; !ok {
-				if _, ok := (*c.fields)[collection]; ok {
-					requestedFields[collection] = (*c.fields)[collection]
+				if _, ok := c.reqFields[collection]; ok {
+					requestedFields[collection] = c.reqFields[collection]
 				}
 			}
 		}
@@ -259,14 +259,14 @@ func Run(
 	cfg *config.Config,
 	auth *auth.Auth,
 	qs *search.QueryServer,
-	fields *map[string][]string,
+	reqFields map[string][]string,
 ) error {
 
 	c := controller{
-		cfg:    cfg,
-		auth:   auth,
-		qs:     qs,
-		fields: fields,
+		cfg:       cfg,
+		auth:      auth,
+		qs:        qs,
+		reqFields: reqFields,
 	}
 
 	mux := http.NewServeMux()
