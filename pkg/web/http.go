@@ -72,7 +72,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 			}
 		*/
 
-		requestedFields := make(map[string][]string, 0)
+		requestedFields := map[string][]string{}
 		for _, fqid := range answers {
 			collection, _, _ := strings.Cut(fqid, "/")
 			if _, ok := requestedFields[collection]; !ok {
