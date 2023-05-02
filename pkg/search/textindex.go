@@ -141,13 +141,15 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 	for name, col := range collections {
 		docMapping := bleve.NewDocumentMapping()
 		for fname, cf := range col.Fields {
-			switch cf.Type {
-			case "HTMLStrict", "HTMLPermissive":
-				docMapping.AddFieldMappingsAt(fname, htmlFieldMapping)
-			case "string", "text":
-				docMapping.AddFieldMappingsAt(fname, textFieldMapping)
-			default:
-				log.Printf("unsupport type %q\n", cf.Type)
+			if cf.Searchable {
+				switch cf.Type {
+				case "HTMLStrict", "HTMLPermissive":
+					docMapping.AddFieldMappingsAt(fname, htmlFieldMapping)
+				case "string", "text":
+					docMapping.AddFieldMappingsAt(fname, textFieldMapping)
+				default:
+					log.Printf("unsupport type %q\n", cf.Type)
+				}
 			}
 		}
 		indexMapping.AddDocumentMapping(name, docMapping)
