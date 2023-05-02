@@ -362,10 +362,12 @@ func (ms Collections) Retain(keep func(string, string, *Member) bool) {
 }
 
 // OrderedKeys returns the keys in document order.
-func (m *Collection) OrderedKeys() []string {
+func (m *Collection) OrderedKeys(searchable bool) []string {
 	fields := make([]string, 0, len(m.Fields))
 	for f := range m.Fields {
-		fields = append(fields, f)
+		if searchable == m.Fields[f].Searchable {
+			fields = append(fields, f)
+		}
 	}
 	sort.Slice(fields, func(i, j int) bool {
 		return m.Fields[fields[i]].Order < m.Fields[fields[j]].Order
@@ -378,8 +380,9 @@ func (ms Collections) AsFilters() Filters {
 	keys := ms.OrderedKeys()
 	fs := make(Filters, 0, len(keys))
 	for _, k := range keys {
-		items := ms[k].OrderedKeys()
-		fs = append(fs, Filter{Name: k, Items: items})
+		items := ms[k].OrderedKeys(true)
+		additional := ms[k].OrderedKeys(false)
+		fs = append(fs, Filter{Name: k, Items: items, Additional: additional})
 	}
 	return fs
 }
@@ -390,7 +393,11 @@ func (ms Collections) CollectionRequestFields() map[string][]string {
 
 	keys := ms.OrderedKeys()
 	for _, k := range keys {
-		collections[k] = ms[k].OrderedKeys()
+		fields := make([]string, 0, len(ms[k].Fields))
+		for f := range ms[k].Fields {
+			fields = append(fields, f)
+		}
+		collections[k] = fields
 	}
 
 	return collections
@@ -401,7 +408,7 @@ func (fs Filters) Write(w io.Writer) error {
 
 	content := map[string]CollectionDescription{}
 	for i := range fs {
-		content[fs[i].Name] = CollectionDescription{Searchable: fs[i].Items, Additional: []string{"id", "sequential_number"}}
+		content[fs[i].Name] = CollectionDescription{Searchable: fs[i].Items, Additional: fs[i].Additional}
 	}
 
 	output, _ := yaml.Marshal(content)
