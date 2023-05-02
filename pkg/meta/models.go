@@ -76,7 +76,7 @@ type FilterKey struct {
 // Filters is a list of filters.
 type Filters []Filter
 
-// Filter is part of the meta model.
+// CollectionDescription is the collection format for search filters
 type CollectionDescription struct {
 	Searchable []string `yaml:"searchable"`
 	Additional []string `yaml:"additional"`
@@ -409,7 +409,8 @@ func (fs Filters) Write(w io.Writer) error {
 	return b.Flush()
 }
 
-// Retain returns a keep function for [Retain].
+// Retain returns a keep function for [Retain] which also updates
+// if Members are searchable
 func (fs Filters) Retain(verbose bool) func(string, string, *Member) bool {
 	type key struct {
 		rel   string
