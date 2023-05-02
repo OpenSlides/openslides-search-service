@@ -77,7 +77,7 @@ type FilterKey struct {
 type Filters []Filter
 
 // Filter is part of the meta model.
-type FilterFields struct {
+type CollectionDescription struct {
 	Searchable []string `yaml:"searchable"`
 	Additional []string `yaml:"additional"`
 }
@@ -238,7 +238,7 @@ func (fk *FilterKey) UnmarshalYAML(value *yaml.Node) error {
 
 // UnmarshalYAML implements [gopkg.in/yaml.v3.Unmarshaler].
 func (fs *Filters) UnmarshalYAML(value *yaml.Node) error {
-	var fsm map[FilterKey]FilterFields
+	var fsm map[FilterKey]CollectionDescription
 	if err := value.Decode(&fsm); err != nil {
 		return err
 	}
@@ -390,11 +390,7 @@ func (ms Collections) CollectionRequestFields() map[string][]string {
 
 	keys := ms.OrderedKeys()
 	for _, k := range keys {
-		fields := make([]string, 0, len(ms[k].Fields))
-		for f := range ms[k].Fields {
-			fields = append(fields, f)
-		}
-		collections[k] = fields
+		collections[k] = ms[k].OrderedKeys()
 	}
 
 	return collections
@@ -402,14 +398,10 @@ func (ms Collections) CollectionRequestFields() map[string][]string {
 
 func (fs Filters) Write(w io.Writer) error {
 	b := bufio.NewWriter(w)
-	type collectionDesc struct {
-		Searchable []string `yaml:"searchable,omitempty"`
-		Additional []string `yaml:"additional,omitempty"`
-	}
 
-	content := map[string]collectionDesc{}
+	content := map[string]CollectionDescription{}
 	for i := range fs {
-		content[fs[i].Name] = collectionDesc{Searchable: fs[i].Items, Additional: []string{"id", "sequential_number"}}
+		content[fs[i].Name] = CollectionDescription{Searchable: fs[i].Items, Additional: []string{"id", "sequential_number"}}
 	}
 
 	output, _ := yaml.Marshal(content)
