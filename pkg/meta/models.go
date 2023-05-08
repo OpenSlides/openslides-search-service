@@ -362,13 +362,12 @@ func (ms Collections) Retain(keep func(string, string, *Member) bool) {
 }
 
 // OrderedKeys returns the keys in document order.
-func (m *Collection) OrderedKeys(searchable bool) []string {
+func (m *Collection) OrderedKeys() []string {
 	fields := make([]string, 0, len(m.Fields))
 	for f := range m.Fields {
-		if searchable == m.Fields[f].Searchable {
-			fields = append(fields, f)
-		}
+		fields = append(fields, f)
 	}
+
 	sort.Slice(fields, func(i, j int) bool {
 		return m.Fields[fields[i]].Order < m.Fields[fields[j]].Order
 	})
@@ -380,8 +379,18 @@ func (ms Collections) AsFilters() Filters {
 	keys := ms.OrderedKeys()
 	fs := make(Filters, 0, len(keys))
 	for _, k := range keys {
-		items := ms[k].OrderedKeys(true)
-		additional := ms[k].OrderedKeys(false)
+		cKeys := ms[k].OrderedKeys()
+
+		items := []string{}
+		additional := []string{}
+		for _, cKey := range cKeys {
+			if ms[k].Fields[cKey].Searchable {
+				items = append(items, cKey)
+			} else {
+				additional = append(additional, cKey)
+			}
+		}
+
 		fs = append(fs, Filter{Name: k, Items: items, Additional: additional})
 	}
 	return fs
@@ -393,11 +402,7 @@ func (ms Collections) CollectionRequestFields() map[string][]string {
 
 	keys := ms.OrderedKeys()
 	for _, k := range keys {
-		fields := make([]string, 0, len(ms[k].Fields))
-		for f := range ms[k].Fields {
-			fields = append(fields, f)
-		}
-		collections[k] = fields
+		collections[k] = ms[k].OrderedKeys()
 	}
 
 	return collections
