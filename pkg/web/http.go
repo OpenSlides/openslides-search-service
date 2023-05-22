@@ -275,7 +275,7 @@ func Run(
 		"/system/search",
 		authMiddleware(http.HandlerFunc(c.search), auth))
 
-	addr := fmt.Sprintf("%s:%d", cfg.Web.Host, cfg.Web.Port)
+	addr := fmt.Sprintf(":%d", cfg.Web.Port)
 	log.Printf("listen web on %s\n", addr)
 
 	s := &http.Server{

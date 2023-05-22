@@ -29,7 +29,7 @@ CMD go vet ./... && go test -test.short ./...
 FROM base as development
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
-EXPOSE 9012
+EXPOSE 9050
 
 COPY --from=builder /root/search.yml .
 COPY --from=builder /root/models.yml .
@@ -45,6 +45,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-search-service"
 
 COPY --from=builder /root/search.yml .
+COPY --from=builder /root/models.yml .
 COPY --from=builder /root/openslides-search-service .
-EXPOSE 9012
+EXPOSE 9050
 ENTRYPOINT ["/openslides-search-service"]
