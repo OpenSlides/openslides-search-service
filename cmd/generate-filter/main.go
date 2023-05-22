@@ -72,7 +72,9 @@ func run(input, filter, output string, verbose bool) error {
 
 	check(collections.AsFilters().Write(out))
 	check(out.Flush())
-	check(f.Close())
+	if f != nil {
+		check(f.Close())
+	}
 	return err
 }
 
