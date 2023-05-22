@@ -47,6 +47,7 @@ type Member struct {
 	ReplacementEnum       []string  `yaml:"replacement_enum"`
 	RestrictionMode       string    `yaml:"restriction_mode"`
 	Required              bool      `yaml:"required"`
+	Searchable            bool      `yaml:"-"`
 	Order                 int32     `yaml:"-"`
 }
 
@@ -61,8 +62,9 @@ type Collections map[string]*Collection
 
 // Filter is part of the meta model.
 type Filter struct {
-	Name  string
-	Items []string
+	Name       string
+	Items      []string
+	Additional []string
 }
 
 // FilterKey is part of the meta model.
@@ -73,6 +75,12 @@ type FilterKey struct {
 
 // Filters is a list of filters.
 type Filters []Filter
+
+// CollectionDescription is the collection format for search filters
+type CollectionDescription struct {
+	Searchable []string `yaml:"searchable"`
+	Additional []string `yaml:"additional"`
+}
 
 func load[T any](r io.Reader) (T, error) {
 	dec := yaml.NewDecoder(r)
@@ -230,7 +238,7 @@ func (fk *FilterKey) UnmarshalYAML(value *yaml.Node) error {
 
 // UnmarshalYAML implements [gopkg.in/yaml.v3.Unmarshaler].
 func (fs *Filters) UnmarshalYAML(value *yaml.Node) error {
-	var fsm map[FilterKey][]string
+	var fsm map[FilterKey]CollectionDescription
 	if err := value.Decode(&fsm); err != nil {
 		return err
 	}
@@ -245,8 +253,9 @@ func (fs *Filters) UnmarshalYAML(value *yaml.Node) error {
 	*fs = make(Filters, 0, len(sorted))
 	for _, s := range sorted {
 		*fs = append(*fs, Filter{
-			Name:  s.Name,
-			Items: fsm[s],
+			Name:       s.Name,
+			Items:      fsm[s].Searchable,
+			Additional: fsm[s].Additional,
 		})
 	}
 	return nil
@@ -358,6 +367,7 @@ func (m *Collection) OrderedKeys() []string {
 	for f := range m.Fields {
 		fields = append(fields, f)
 	}
+
 	sort.Slice(fields, func(i, j int) bool {
 		return m.Fields[fields[i]].Order < m.Fields[fields[j]].Order
 	})
@@ -369,42 +379,78 @@ func (ms Collections) AsFilters() Filters {
 	keys := ms.OrderedKeys()
 	fs := make(Filters, 0, len(keys))
 	for _, k := range keys {
-		items := ms[k].OrderedKeys()
-		fs = append(fs, Filter{Name: k, Items: items})
+		cKeys := ms[k].OrderedKeys()
+
+		items := []string{}
+		additional := []string{}
+		for _, cKey := range cKeys {
+			if ms[k].Fields[cKey].Searchable {
+				items = append(items, cKey)
+			} else {
+				additional = append(additional, cKey)
+			}
+		}
+
+		fs = append(fs, Filter{Name: k, Items: items, Additional: additional})
 	}
 	return fs
 }
 
+// CollectionRequestFields returns the collections with their requested fields
+func (ms Collections) CollectionRequestFields() map[string][]string {
+	collections := map[string][]string{}
+
+	keys := ms.OrderedKeys()
+	for _, k := range keys {
+		collections[k] = ms[k].OrderedKeys()
+	}
+
+	return collections
+}
+
 func (fs Filters) Write(w io.Writer) error {
 	b := bufio.NewWriter(w)
+
+	content := map[string]CollectionDescription{}
 	for i := range fs {
-		if i > 0 {
-			fmt.Fprintln(b)
-		}
-		fmt.Fprintf(b, "%s:\n", fs[i].Name)
-		for _, item := range fs[i].Items {
-			fmt.Fprintf(b, "  - %s\n", item)
-		}
+		content[fs[i].Name] = CollectionDescription{Searchable: fs[i].Items, Additional: fs[i].Additional}
+	}
+
+	if err := yaml.NewEncoder(b).Encode(content); err != nil {
+		return err
 	}
 	return b.Flush()
 }
 
-// Retain returns a keep function for [Retain].
+// Retain returns a keep function for [Retain] which also updates
+// if Members are searchable
 func (fs Filters) Retain(verbose bool) func(string, string, *Member) bool {
 	type key struct {
 		rel   string
 		field string
 	}
 	keep := map[key]struct{}{}
+	additional := map[key]struct{}{}
 	for _, m := range fs {
 		for _, f := range m.Items {
 			keep[key{rel: m.Name, field: f}] = struct{}{}
 		}
+
+		for _, f := range m.Additional {
+			additional[key{rel: m.Name, field: f}] = struct{}{}
+		}
 	}
-	return func(rk, fk string, _ *Member) bool {
+	return func(rk, fk string, m *Member) bool {
+		if _, ok := additional[key{rel: rk, field: fk}]; ok {
+			m.Searchable = false
+			return true
+		}
+
 		_, ok := keep[key{rel: rk, field: fk}]
 		if !ok && verbose {
 			log.Printf("removing filtered %s.%s\n", rk, fk)
+		} else {
+			m.Searchable = true
 		}
 		return ok
 	}

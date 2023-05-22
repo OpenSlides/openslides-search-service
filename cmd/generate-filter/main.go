@@ -58,11 +58,23 @@ func run(input, filter, output string, verbose bool) error {
 	}
 
 	lg("Writing filter\n")
-	collections.Retain(meta.RetainStrings(verbose))
+	searchable := meta.RetainStrings(verbose)
+	collections.Retain(func(k, fk string, f *meta.Member) bool {
+		switch fk {
+		case "id", "meeting_id", "sequential_number":
+			f.Searchable = false
+			return true
+		default:
+			f.Searchable = true
+			return searchable(k, fk, f)
+		}
+	})
 
 	check(collections.AsFilters().Write(out))
 	check(out.Flush())
-	check(f.Close())
+	if f != nil {
+		check(f.Close())
+	}
 	return err
 }
 
