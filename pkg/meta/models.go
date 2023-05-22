@@ -416,8 +416,9 @@ func (fs Filters) Write(w io.Writer) error {
 		content[fs[i].Name] = CollectionDescription{Searchable: fs[i].Items, Additional: fs[i].Additional}
 	}
 
-	output, _ := yaml.Marshal(content)
-	fmt.Fprintf(b, string(output))
+	if err := yaml.NewEncoder(b).Encode(content); err != nil {
+		return err
+	}
 	return b.Flush()
 }
 
