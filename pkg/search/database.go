@@ -64,7 +64,14 @@ func NewDatabase(cfg *config.Config) *Database {
 
 func (db *Database) run(fn func(context.Context, *pgx.Conn) error) error {
 	ctx := context.Background()
-	con, err := pgx.Connect(ctx, db.cfg.Database.ConnectionURL())
+	config, err := pgx.ParseConfig(db.cfg.Database.ConnectionConfig())
+	if err != nil {
+		return err
+	}
+
+	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	con, err := pgx.ConnectConfig(ctx, config)
 	if err != nil {
 		return err
 	}
