@@ -69,6 +69,7 @@ func (db *Database) run(fn func(context.Context, *pgx.Conn) error) error {
 		return err
 	}
 
+	// Simple protocol is used for PGBouncer compatibility
 	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
 	con, err := pgx.ConnectConfig(ctx, config)
