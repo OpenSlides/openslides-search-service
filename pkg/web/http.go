@@ -15,6 +15,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -32,18 +33,60 @@ type controller struct {
 }
 
 /*
-func userIDFromRequest(r *http.Request) (int, error) {
-	user := r.FormValue("u")
-	if user == "" {
-		return 0, errors.New("'u' parameter missing")
+	func userIDFromRequest(r *http.Request) (int, error) {
+		user := r.FormValue("u")
+		if user == "" {
+			return 0, errors.New("'u' parameter missing")
+		}
+		userID, err := strconv.Atoi(user)
+		if err != nil {
+			return 0, errors.New("'u' is not an user id")
+		}
+		return userID, nil
 	}
-	userID, err := strconv.Atoi(user)
-	if err != nil {
-		return 0, errors.New("'u' is not an user id")
-	}
-	return userID, nil
-}
 */
+type auFields struct {
+	RelationType string              `json:"type"`
+	Collection   string              `json:"collection"`
+	Fields       map[string]auFields `json:"fields"`
+}
+
+type auRequest struct {
+	Ids        []int                `json:"ids"`
+	Collection string               `json:"collection"`
+	Fields     map[string]*auFields `json:"fields"`
+}
+
+func (c *controller) autoupdateRequestFromFQIDs(fqids []string) []auRequest {
+	collIdxMap := map[string]int{}
+	var req []auRequest
+	for _, fqid := range fqids {
+		collection, id, found := strings.Cut(fqid, "/")
+		if !found {
+			continue
+		}
+
+		if _, ok := collIdxMap[collection]; !ok {
+			collIdxMap[collection] = len(req)
+			req = append(req, auRequest{
+				Ids:        []int{},
+				Collection: collection,
+				Fields:     map[string]*auFields{},
+			})
+
+			if fields, ok := c.reqFields[collection]; ok {
+				for _, field := range fields {
+					req[collIdxMap[collection]].Fields[field] = nil
+				}
+			}
+		}
+
+		if parsedId, err := strconv.Atoi(id); err == nil {
+			req[collIdxMap[collection]].Ids = append(req[collIdxMap[collection]].Ids, parsedId)
+		}
+	}
+	return req
+}
 
 func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 
@@ -72,35 +115,27 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 			}
 		*/
 
-		requestedFields := map[string][]string{}
-		for _, fqid := range answers {
-			collection, _, _ := strings.Cut(fqid, "/")
-			if _, ok := requestedFields[collection]; !ok {
-				if _, ok := c.reqFields[collection]; ok {
-					requestedFields[collection] = c.reqFields[collection]
-				}
-			}
-		}
-
-		requestBody := struct {
-			UserID int                 `json:"user_id"`
-			FQIDs  []string            `json:"fqids"`
-			Fields map[string][]string `json:"fields"`
-		}{
-			UserID: userID,
-			FQIDs:  answers,
-			Fields: requestedFields,
-		}
+		requestBody := c.autoupdateRequestFromFQIDs(answers)
 
 		body, err := json.Marshal(&requestBody)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
 		}
-		resp, err := http.Post(
-			c.cfg.Restricter.URL,
-			"application/json",
-			bytes.NewReader(body))
+
+		req, err := http.NewRequest("POST", c.cfg.Restricter.URL, bytes.NewReader(body))
+		if err != nil {
+			handleErrorWithStatus(w, err)
+			return
+		}
+
+		req.Header = http.Header{
+			"Content-Type": {"application/json"},
+			"User-Id":      {strconv.Itoa(userID)},
+		}
+
+		client := http.Client{}
+		resp, err := client.Do(req)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return

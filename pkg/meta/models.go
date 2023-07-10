@@ -22,12 +22,6 @@ var (
 	filterNum atomic.Int32
 )
 
-// CollectionDescription is the collection format for search filters
-type CollectionDescription struct {
-	Searchable []string `yaml:"searchable"`
-	Additional []string `yaml:"additional"`
-}
-
 func load[T any](r io.Reader) (T, error) {
 	dec := yaml.NewDecoder(r)
 	var t T

@@ -12,6 +12,7 @@ type Filter struct {
 	Name       string
 	Items      []string
 	Additional []string
+	Relations  map[string]CollectionRelation
 }
 
 // FilterKey is part of the meta model.
@@ -56,6 +57,7 @@ func (fs *Filters) UnmarshalYAML(value *yaml.Node) error {
 			Name:       s.Name,
 			Items:      fsm[s].Searchable,
 			Additional: fsm[s].Additional,
+			Relations:  fsm[s].Relations,
 		})
 	}
 	return nil

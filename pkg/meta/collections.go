@@ -14,6 +14,19 @@ type Collection struct {
 	Order  int32
 }
 
+type CollectionRelation struct {
+	Type       string
+	Collection string
+	Fields     []string
+}
+
+// CollectionDescription is the collection format for search filters
+type CollectionDescription struct {
+	Searchable []string                      `yaml:"searchable"`
+	Additional []string                      `yaml:"additional"`
+	Relations  map[string]CollectionRelation `yaml:"relations,omitempty"`
+}
+
 // Collections is part of the meta model.
 type Collections map[string]*Collection
 
