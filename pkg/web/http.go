@@ -81,8 +81,8 @@ func (c *controller) autoupdateRequestFromFQIDs(fqids []string) []auRequest {
 			}
 		}
 
-		if parsedId, err := strconv.Atoi(id); err == nil {
-			req[collIdxMap[collection]].Ids = append(req[collIdxMap[collection]].Ids, parsedId)
+		if parsedID, err := strconv.Atoi(id); err == nil {
+			req[collIdxMap[collection]].Ids = append(req[collIdxMap[collection]].Ids, parsedID)
 		}
 	}
 	return req

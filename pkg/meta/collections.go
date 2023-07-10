@@ -14,6 +14,7 @@ type Collection struct {
 	Order  int32
 }
 
+// CollectionRelation describes a related collection
 type CollectionRelation struct {
 	Type       string
 	Collection string
