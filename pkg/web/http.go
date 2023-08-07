@@ -123,7 +123,8 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		req, err := http.NewRequest("POST", c.cfg.Restricter.URL, bytes.NewReader(body))
+		urlParams := fmt.Sprintf("?user_id=%d&single=1", userID)
+		req, err := http.NewRequest("POST", c.cfg.Restricter.URL+urlParams, bytes.NewReader(body))
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
@@ -131,7 +132,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 
 		req.Header = http.Header{
 			"Content-Type": {"application/json"},
-			"User-Id":      {strconv.Itoa(userID)},
 		}
 
 		client := http.Client{}
@@ -150,7 +150,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		defer resp.Body.Close()
 		w.Header().Set("Content-Type", "application/json")
 
-		filteredResp, err := filterRestricterResponse(resp.Body)
+		filteredResp, err := transformRestricterResponse(resp.Body)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
@@ -171,31 +171,37 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// removes restriced results from restricter response by checking
-// for id fields within the retured results
-func filterRestricterResponse(body io.ReadCloser) ([]byte, error) {
+// transforms the autoupdate response to per fqid objects
+func transformRestricterResponse(body io.ReadCloser) ([]byte, error) {
 	respBody, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
 
-	var restricterResponse map[string]map[string]any
+	var restricterResponse map[string]any
 	if err := json.Unmarshal(respBody, &restricterResponse); err != nil {
 		return nil, err
 	}
 
+	transformed := make(map[string]map[string]any)
 	for k, v := range restricterResponse {
-		if _, ok := v["id"]; !ok {
-			delete(restricterResponse, k)
+		parts := strings.Split(k, "/")
+		fqid := parts[0] + "/" + parts[1]
+		field := parts[2]
+
+		if _, ok := transformed[fqid]; !ok {
+			transformed[fqid] = make(map[string]any)
 		}
+
+		transformed[fqid][field] = v
 	}
 
-	filteredContent, err := json.Marshal(restricterResponse)
+	transformedContent, err := json.Marshal(transformed)
 	if err != nil {
 		return nil, err
 	}
 
-	return filteredContent, nil
+	return transformedContent, nil
 }
 
 func authMiddleware(next http.Handler, auth *auth.Auth) http.Handler {
