@@ -116,6 +116,12 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		*/
 
 		requestBody := c.autoupdateRequestFromFQIDs(answers)
+		if len(requestBody) == 0 {
+			if _, err := w.Write([]byte("{}")); err != nil {
+				log.Printf("error: writing response failed: %v\n", err)
+			}
+			return
+		}
 
 		body, err := json.Marshal(&requestBody)
 		if err != nil {
