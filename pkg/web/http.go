@@ -192,14 +192,16 @@ func transformRestricterResponse(body io.ReadCloser) ([]byte, error) {
 	transformed := make(map[string]map[string]any)
 	for k, v := range restricterResponse {
 		parts := strings.Split(k, "/")
-		fqid := parts[0] + "/" + parts[1]
-		field := parts[2]
+		if len(parts) >= 3 {
+			fqid := parts[0] + "/" + parts[1]
+			field := parts[2]
 
-		if _, ok := transformed[fqid]; !ok {
-			transformed[fqid] = make(map[string]any)
+			if _, ok := transformed[fqid]; !ok {
+				transformed[fqid] = make(map[string]any)
+			}
+
+			transformed[fqid][field] = v
 		}
-
-		transformed[fqid][field] = v
 	}
 
 	transformedContent, err := json.Marshal(transformed)
