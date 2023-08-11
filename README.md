@@ -16,9 +16,9 @@ The OpenSlides search service.
 | `SEARCH_INDEX_UPDATE_INTERVAL`  | `120s`                     | Poll intervall to update the index without queries. |
 | `MODELS_YML_FILE`               | `models.yml`               | File path of the used models. |
 | `SEARCH_YML_FILE`               | `search.yml`               | Fields of the models to be searched. |
-| `DATEBASE_NAME`                 | `openslides`               | Name of the database. |
-| `DATEBASE_USER`                 | `openslides`               | Database user. |
-| `DATEBASE_HOST`                 | `localhost`                | Host of the database. |
-| `DATEBASE_PORT`                 | `5432`                     | Port of the database. |
-| `DATEBASE_PASSWORD_FILE`        | `/run/secrets/postgres_password` | Password file of the database user. |
+| `DATABASE_NAME`                 | `openslides`               | Name of the database. |
+| `DATABASE_USER`                 | `openslides`               | Database user. |
+| `DATABASE_HOST`                 | `localhost`                | Host of the database. |
+| `DATABASE_PORT`                 | `5432`                     | Port of the database. |
+| `DATABASE_PASSWORD_FILE`        | `/run/secrets/postgres_password` | Password file of the database user. |
 | `RESTRICTER_URL`                | ``                         | URL to use the restricter from the auto-update-service to filter the query results.|
