@@ -23,9 +23,9 @@ type CollectionRelation struct {
 
 // CollectionDescription is the collection format for search filters
 type CollectionDescription struct {
-	Searchable []string                      `yaml:"searchable"`
-	Additional []string                      `yaml:"additional"`
-	Relations  map[string]CollectionRelation `yaml:"relations,omitempty"`
+	Searchable []string                       `yaml:"searchable"`
+	Additional []string                       `yaml:"additional"`
+	Relations  map[string]*CollectionRelation `yaml:"relations,omitempty"`
 }
 
 // Collections is part of the meta model.

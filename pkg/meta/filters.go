@@ -55,7 +55,7 @@ func (fs *Filters) UnmarshalYAML(value *yaml.Node) error {
 	for _, s := range sorted {
 		relations := map[string]*CollectionRelation{}
 		for k, r := range fsm[s].Relations {
-			relations[k] = &r
+			relations[k] = r
 		}
 
 		*fs = append(*fs, Filter{
