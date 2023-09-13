@@ -9,10 +9,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"runtime"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/auth"
 	"github.com/OpenSlides/openslides-autoupdate-service/pkg/environment"
@@ -45,6 +46,7 @@ func signalContext() (context.Context, context.CancelFunc) {
 }
 
 func run(cfg *config.Config) error {
+	log.SetLevel(cfg.LogLevel)
 	ctx, cancel := signalContext()
 	defer cancel()
 
