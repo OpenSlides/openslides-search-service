@@ -127,7 +127,7 @@ func (cfg *Config) fromEnv() error {
 	)
 
 	return storeFromEnv([]storeEnv{
-		{"SEARCH_LOG_LEVEL", storeLogLevel(&cfg.LogLevel)},
+		{"OPENSLIDES_LOG_LEVEL", storeLogLevel(&cfg.LogLevel)},
 		{"SEARCH_PORT", storeInt(&cfg.Web.Port)},
 		{"SEARCH_LISTEN_HOST", storeString(&cfg.Web.Host)},
 		{"SEARCH_MAX_QUEUED", storeInt(&cfg.Web.MaxQueue)},
