@@ -1,4 +1,6 @@
 agenda_item:
+  contains:
+    - topic
   searchable:
     - item_number
     - comment
@@ -35,6 +37,8 @@ assignment:
         id: null
         name: null
 committee:
+  contains:
+    - meeting
   searchable:
     - name
     - description
@@ -109,6 +113,10 @@ motion:
                 username: null
                 gender: null
 poll:
+  contains:
+    - topic
+    - motion
+    - assignment
   searchable:
     - title
     - description
@@ -126,6 +134,10 @@ poll:
         number: null
         sequential_number: null
 tag:
+  contains:
+    - topic
+    - motion
+    - assignment
   searchable:
     - name
     - meeting_id
