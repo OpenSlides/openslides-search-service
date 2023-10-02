@@ -2,8 +2,6 @@ module github.com/OpenSlides/openslides-search-service
 
 go 1.21
 
-toolchain go1.21.0
-
 require (
 	github.com/OpenSlides/openslides-autoupdate-service v0.4.1-0.20230912062233-f037fa16c288
 	github.com/blevesearch/bleve/v2 v2.3.8
