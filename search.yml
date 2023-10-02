@@ -15,6 +15,7 @@ agenda_item:
         id: null
         title: null
         text: null
+        meeting_id: null
     meeting_id:
       type: relation
       collection: meeting
@@ -139,6 +140,12 @@ poll:
         title: null
         number: null
         sequential_number: null
+        meeting_id:
+          type: relation
+          collection: meeting
+          fields:
+            id: null
+            name: null
 tag:
   contains:
     - topic
@@ -173,6 +180,12 @@ tag:
             id: null
             title: null
             text: null
+            meeting_id:
+              type: relation
+              collection: meeting
+              fields:
+                id: null
+                name: null
 topic:
   searchable:
     - title
