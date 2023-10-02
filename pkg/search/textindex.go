@@ -342,7 +342,7 @@ type Answer struct {
 }
 
 // Search queries the internal index for hits.
-func (ti *TextIndex) Search(question string, meetingID int) (map[string]Answer, error) {
+func (ti *TextIndex) Search(question string, collections []string, meetingID int) (map[string]Answer, error) {
 	start := time.Now()
 	defer func() {
 		log.Debugf("searching for %q took %v\n", question, time.Since(start))
@@ -366,6 +366,18 @@ func (ti *TextIndex) Search(question string, meetingID int) (map[string]Answer, 
 		q = bleve.NewConjunctionQuery(meetingQuery, matchQuery)
 	} else {
 		q = matchQuery
+	}
+
+	if len(collections) > 0 {
+		collQueries := make([]query.Query, len(collections))
+		for i, c := range collections {
+			collQuery := bleve.NewTermQuery(c)
+			collQuery.SetField("_bleve_type")
+			collQueries[i] = collQuery
+		}
+
+		collFilterQuery := bleve.NewDisjunctionQuery(collQueries...)
+		q = bleve.NewConjunctionQuery(q, collFilterQuery)
 	}
 
 	request := bleve.NewSearchRequest(q)
