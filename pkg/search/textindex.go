@@ -18,6 +18,7 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/simple"
 	bleveHtml "github.com/blevesearch/bleve/v2/analysis/char/html"
 	"github.com/blevesearch/bleve/v2/analysis/lang/de"
 	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
@@ -151,13 +152,14 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 	htmlFieldMapping.Analyzer = deHTML
 
 	stringFieldMapping := bleve.NewTextFieldMapping()
-	stringFieldMapping.Analyzer = "simple"
+	stringFieldMapping.Analyzer = simple.Name
 
 	indexMapping := mapping.NewIndexMapping()
 	indexMapping.TypeField = "_bleve_type"
 
 	for name, col := range collections {
 		docMapping := bleve.NewDocumentMapping()
+		docMapping.AddFieldMappingsAt("_bleve_type", stringFieldMapping)
 		for fname, cf := range col.Fields {
 			if cf.Searchable {
 				switch cf.Type {
