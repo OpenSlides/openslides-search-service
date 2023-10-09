@@ -363,6 +363,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 
 		meetingIDOwnerQuery := bleve.NewMatchQuery("meeting/" + strconv.Itoa(meetingID))
 		meetingIDOwnerQuery.SetField("owner_id")
+		meetingIDOwnerQuery.Analyzer = simple.Name
 
 		meetingQuery := bleve.NewDisjunctionQuery(meetingIDQuery, meetingIDsQuery, meetingIDOwnerQuery)
 		q = bleve.NewConjunctionQuery(meetingQuery, matchQuery)

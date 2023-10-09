@@ -50,9 +50,9 @@ mediafile:
   searchable:
     - title
     - filename
+    - owner_id
   additional:
     - id
-    - owner_id
   relations:
     owner_id:
       type: generic-relation
