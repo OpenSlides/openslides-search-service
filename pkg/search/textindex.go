@@ -18,7 +18,7 @@ import (
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis"
-	"github.com/blevesearch/bleve/v2/analysis/analyzer/simple"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/keyword"
 	bleveHtml "github.com/blevesearch/bleve/v2/analysis/char/html"
 	"github.com/blevesearch/bleve/v2/analysis/lang/de"
 	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
@@ -151,15 +151,15 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 	htmlFieldMapping := bleve.NewTextFieldMapping()
 	htmlFieldMapping.Analyzer = deHTML
 
-	stringFieldMapping := bleve.NewTextFieldMapping()
-	stringFieldMapping.Analyzer = simple.Name
+	keywordFieldMapping := bleve.NewTextFieldMapping()
+	keywordFieldMapping.Analyzer = keyword.Name
 
 	indexMapping := mapping.NewIndexMapping()
 	indexMapping.TypeField = "_bleve_type"
 
 	for name, col := range collections {
 		docMapping := bleve.NewDocumentMapping()
-		docMapping.AddFieldMappingsAt("_bleve_type", stringFieldMapping)
+		docMapping.AddFieldMappingsAt("_bleve_type", keywordFieldMapping)
 		for fname, cf := range col.Fields {
 			if cf.Searchable {
 				switch cf.Type {
@@ -168,7 +168,7 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 				case "string", "text":
 					docMapping.AddFieldMappingsAt(fname, textFieldMapping)
 				case "generic-relation":
-					docMapping.AddFieldMappingsAt(fname, stringFieldMapping)
+					docMapping.AddFieldMappingsAt(fname, keywordFieldMapping)
 				case "relation", "number":
 					docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
 				case "number[]":
@@ -361,9 +361,8 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 		meetingIDsQuery := newNumericQuery(fmid)
 		meetingIDsQuery.SetField("meeting_ids")
 
-		meetingIDOwnerQuery := bleve.NewMatchQuery("meeting/" + strconv.Itoa(meetingID))
+		meetingIDOwnerQuery := bleve.NewTermQuery("meeting/" + strconv.Itoa(meetingID))
 		meetingIDOwnerQuery.SetField("owner_id")
-		meetingIDOwnerQuery.Analyzer = simple.Name
 
 		meetingQuery := bleve.NewDisjunctionQuery(meetingIDQuery, meetingIDsQuery, meetingIDOwnerQuery)
 		q = bleve.NewConjunctionQuery(meetingQuery, matchQuery)
