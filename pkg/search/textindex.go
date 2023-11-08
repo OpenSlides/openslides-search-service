@@ -366,7 +366,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	var wildcardQuestion bytes.Buffer
 	for _, w := range strings.Split(question, " ") {
 		if w[0] != byte('*') && w[len(w)-1] != byte('*') {
-			wildcardQuestion.WriteString("*" + strings.ToLower(w) + "*")
+			wildcardQuestion.WriteString("*" + strings.ToLower(w) + "* ")
 		}
 	}
 	wildcardQuery := bleve.NewQueryStringQuery(wildcardQuestion.String())
