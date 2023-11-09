@@ -191,7 +191,7 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 					case "simple":
 						docMapping.AddFieldMappingsAt(fname, simpleFieldMapping)
 					default:
-						log.Errorf("unsupported Analyzer %q on field %s\n", *cf.Analyzer, fname)
+						log.Errorf("unsupported analyzer %q on field %s\n", *cf.Analyzer, fname)
 					}
 				}
 			}
@@ -237,6 +237,7 @@ func (bt bleveType) fill(fields map[string]*meta.Member, data []byte) {
 				bt[fname] = append(bt[fname].([]string), string(value))
 				return nil
 			}, fname)
+			continue
 		default:
 			if v, _, _, err := jsonparser.Get(data, fname); err == nil {
 				bt[fname] = v
