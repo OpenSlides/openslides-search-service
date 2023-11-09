@@ -168,20 +168,31 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 		docMapping.AddFieldMappingsAt("_bleve_type", keywordFieldMapping)
 		for fname, cf := range col.Fields {
 			if cf.Searchable {
-				switch cf.Type {
-				case "HTMLStrict", "HTMLPermissive":
-					docMapping.AddFieldMappingsAt(fname, htmlFieldMapping)
-				case "string", "text":
-					docMapping.AddFieldMappingsAt(fname, textFieldMapping)
-					docMapping.AddFieldMappingsAt("_"+fname+"_original", simpleFieldMapping)
-				case "generic-relation":
-					docMapping.AddFieldMappingsAt(fname, keywordFieldMapping)
-				case "relation", "number":
-					docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
-				case "number[]":
-					docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
-				default:
-					log.Errorf("unsupport type %q on field %s\n", cf.Type, fname)
+				if cf.Analyzer == nil {
+					switch cf.Type {
+					case "HTMLStrict", "HTMLPermissive":
+						docMapping.AddFieldMappingsAt(fname, htmlFieldMapping)
+					case "string", "text":
+						docMapping.AddFieldMappingsAt(fname, textFieldMapping)
+						docMapping.AddFieldMappingsAt("_"+fname+"_original", simpleFieldMapping)
+					case "generic-relation":
+						docMapping.AddFieldMappingsAt(fname, keywordFieldMapping)
+					case "relation", "number":
+						docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
+					case "number[]":
+						docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
+					default:
+						log.Errorf("unsupport type %q on field %s\n", cf.Type, fname)
+					}
+				} else {
+					switch *cf.Analyzer {
+					case "html":
+						docMapping.AddFieldMappingsAt(fname, htmlFieldMapping)
+					case "simple":
+						docMapping.AddFieldMappingsAt(fname, simpleFieldMapping)
+					default:
+						log.Errorf("unsupported Analyzer %q on field %s\n", *cf.Analyzer, fname)
+					}
 				}
 			}
 		}
@@ -220,6 +231,12 @@ func (bt bleveType) fill(fields map[string]*meta.Member, data []byte) {
 				}
 			}, fname)
 			continue
+		case "json-int-string-map":
+			bt[fname] = []string{}
+			jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+				bt[fname] = append(bt[fname].([]string), string(value))
+				return nil
+			}, fname)
 		default:
 			if v, _, _, err := jsonparser.Get(data, fname); err == nil {
 				bt[fname] = v

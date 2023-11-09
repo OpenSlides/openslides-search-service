@@ -84,6 +84,11 @@ motion:
     - text
     - reason
     - meeting_id
+    - amendment_paragraphs
+  searchable_config:
+    amendment_paragraphs:
+      type: json-int-string-map
+      analyzer: html
   additional:
     - id
     - sequential_number
@@ -219,6 +224,13 @@ user:
     - organization_management_level
     - meeting_ids
     - owner_id
+  searchable_config:
+    first_name:
+      analyzer: simple
+    last_name:
+      analyzer: simple
+    email:
+      analyzer: simple
   additional:
     - id
   relations:
