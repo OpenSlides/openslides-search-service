@@ -206,7 +206,11 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 }
 
 func (bt bleveType) fill(fields map[string]*meta.Member, data []byte) {
-	for fname := range fields {
+	for fname, field := range fields {
+		if !field.Searchable {
+			continue
+		}
+
 		switch fields[fname].Type {
 		case "string", "text":
 			if v, err := jsonparser.GetString(data, fname); err == nil {
