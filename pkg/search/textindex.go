@@ -156,6 +156,7 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 
 	keywordFieldMapping := bleve.NewTextFieldMapping()
 	keywordFieldMapping.Analyzer = keyword.Name
+	keywordFieldMapping.IncludeInAll = false
 
 	simpleFieldMapping := bleve.NewTextFieldMapping()
 	simpleFieldMapping.Analyzer = simple.Name
