@@ -146,17 +146,20 @@ func (bt bleveType) BleveType() string {
 }
 
 func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
-
 	numberFieldMapping := bleve.NewNumericFieldMapping()
+
+	numberedRelationFieldMapping := bleve.NewNumericFieldMapping()
+	numberedRelationFieldMapping.IncludeInAll = false
+
 	textFieldMapping := bleve.NewTextFieldMapping()
 	textFieldMapping.Analyzer = de.AnalyzerName
 
 	htmlFieldMapping := bleve.NewTextFieldMapping()
 	htmlFieldMapping.Analyzer = deHTML
 
-	keywordFieldMapping := bleve.NewTextFieldMapping()
-	keywordFieldMapping.Analyzer = keyword.Name
-	keywordFieldMapping.IncludeInAll = false
+	collectionInfoFieldMapping := bleve.NewTextFieldMapping()
+	collectionInfoFieldMapping.Analyzer = keyword.Name
+	collectionInfoFieldMapping.IncludeInAll = false
 
 	simpleFieldMapping := bleve.NewTextFieldMapping()
 	simpleFieldMapping.Analyzer = simple.Name
@@ -166,7 +169,7 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 
 	for name, col := range collections {
 		docMapping := bleve.NewDocumentMapping()
-		docMapping.AddFieldMappingsAt("_bleve_type", keywordFieldMapping)
+		docMapping.AddFieldMappingsAt("_bleve_type", collectionInfoFieldMapping)
 		for fname, cf := range col.Fields {
 			if cf.Searchable {
 				if cf.Analyzer == nil {
@@ -177,10 +180,10 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 						docMapping.AddFieldMappingsAt(fname, textFieldMapping)
 						docMapping.AddFieldMappingsAt("_"+fname+"_original", simpleFieldMapping)
 					case "generic-relation":
-						docMapping.AddFieldMappingsAt(fname, keywordFieldMapping)
-					case "relation", "number":
-						docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
-					case "number[]":
+						docMapping.AddFieldMappingsAt(fname, collectionInfoFieldMapping)
+					case "relation", "relation-list":
+						docMapping.AddFieldMappingsAt(fname, numberedRelationFieldMapping)
+					case "number", "number[]":
 						docMapping.AddFieldMappingsAt(fname, numberFieldMapping)
 					default:
 						log.Errorf("unsupport type %q on field %s\n", cf.Type, fname)
