@@ -53,6 +53,7 @@ mediafile:
     - owner_id
   additional:
     - id
+    - is_directory
   relations:
     owner_id:
       type: generic-relation
