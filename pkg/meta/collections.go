@@ -16,9 +16,9 @@ type Collection struct {
 
 // CollectionRelation describes a related collection
 type CollectionRelation struct {
-	Type       string                         `yaml:"type"`
-	Collection *string                        `yaml:"collection,omitempty"`
-	Fields     map[string]*CollectionRelation `yaml:"fields"`
+	Type       string                         `json:"type" yaml:"type"`
+	Collection *string                        `json:"collection,omitempty" yaml:"collection,omitempty"`
+	Fields     map[string]*CollectionRelation `json:"fields" yaml:"fields"`
 }
 
 // CollectionSearchableConfig contains per field config of a collection

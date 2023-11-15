@@ -126,6 +126,33 @@ motion:
                 pronoun: null
                 username: null
                 gender: null
+motion_change_recommendation:
+  contains:
+    - motion
+  searchable:
+    - other_description
+    - text
+    - meeting_id
+  additional:
+    - id
+    - motion_id
+  relations:
+    motion_id:
+      type: relation
+      collection: motion
+      fields:
+        id: null
+        title: null
+        number: null
+        sequential_number: null
+        meeting_id: null
+    meeting_id:
+      type: relation
+      collection: meeting
+      fields:
+        id: null
+        name: null
+        motions_show_sequential_number: null
 poll:
   contains:
     - topic
