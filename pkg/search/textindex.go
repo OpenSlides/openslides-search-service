@@ -405,7 +405,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 
 	wildcardQuestion := bytes.Buffer{}
 	for _, w := range strings.Split(filterExactMatchTerms(question), " ") {
-		if len(w) > 0 && w[0] != byte('*') && w[len(w)-1] != byte('*') {
+		if len(w) > 2 && w[0] != byte('*') && w[len(w)-1] != byte('*') {
 			wildcardQuestion.WriteString("*" + strings.ToLower(w) + "* ")
 		}
 	}
