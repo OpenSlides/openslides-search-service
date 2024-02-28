@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
 var (
