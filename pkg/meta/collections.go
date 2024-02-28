@@ -39,7 +39,7 @@ type CollectionDescription struct {
 // Collections is part of the meta model.
 type Collections map[string]*Collection
 
-// UnmarshalYAML
+// UnmarshalYAML Parses yaml to Collection
 func (m *Collection) UnmarshalYAML(node []byte) error {
 	m.Order = modelNum.Add(1)
 	return yaml.Unmarshal(node, &m.Fields)

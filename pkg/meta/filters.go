@@ -19,7 +19,7 @@ type Filter struct {
 // Filters is a list of filters.
 type Filters []Filter
 
-// UnmarshalYAML
+// UnmarshalYAML Parses yaml to Filters
 func (fs *Filters) UnmarshalYAML(node []byte) error {
 	var fsm map[string]CollectionDescription
 	if err := yaml.Unmarshal(node, &fsm); err != nil {

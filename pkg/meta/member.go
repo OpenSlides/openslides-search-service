@@ -29,7 +29,7 @@ type Member struct {
 	Order                 int32               `yaml:"-"`
 }
 
-// UnmarshalYAML
+// UnmarshalYAML Parses yaml to MemberTo
 func (mt *MemberTo) UnmarshalYAML(node []byte) error {
 	// 1. string
 	var s string
@@ -58,7 +58,7 @@ func (mt *MemberTo) UnmarshalYAML(node []byte) error {
 	return nil
 }
 
-// UnmarshalYAML
+// UnmarshalYAML Parses yaml to Member
 func (m *Member) UnmarshalYAML(node []byte) error {
 	m.Order = fieldNum.Add(1)
 	var s string

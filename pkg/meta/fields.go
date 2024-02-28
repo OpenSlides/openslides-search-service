@@ -12,7 +12,7 @@ type Fields struct {
 	To   string `yaml:"to"`
 }
 
-// UnmarshalYAML implements.
+// UnmarshalYAML Parses yaml to Fields
 func (fs *Fields) UnmarshalYAML(node []byte) error {
 	var s string
 	if err := yaml.Unmarshal(node, &s); err == nil {
