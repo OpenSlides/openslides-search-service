@@ -60,6 +60,10 @@ func (mt *MemberTo) UnmarshalYAML(node []byte) error {
 
 // UnmarshalYAML Parses yaml to Member
 func (m *Member) UnmarshalYAML(node []byte) error {
+	if node[0] == byte('&') {
+		return nil
+	}
+
 	m.Order = fieldNum.Add(1)
 	var s string
 	if err := yaml.Unmarshal(node, &s); err == nil {
