@@ -26,6 +26,10 @@ CMD go vet ./... && go test -test.short ./...
 FROM base as development
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
+COPY ./openslides-autoupdate-service /openslides-autoupdate-service
+RUN echo 'replace github.com/OpenSlides/openslides-autoupdate-service => /openslides-autoupdate-service' >> go.mod
+RUN go mod tidy
+
 EXPOSE 9050
 
 COPY entrypoint.sh ./
