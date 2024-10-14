@@ -26,10 +26,6 @@ CMD go vet ./... && go test -test.short ./...
 FROM base as development
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
-COPY ./openslides-autoupdate-service /openslides-autoupdate-service
-RUN echo 'replace github.com/OpenSlides/openslides-autoupdate-service => /openslides-autoupdate-service' >> go.mod
-RUN go mod tidy
-
 EXPOSE 9050
 
 COPY entrypoint.sh ./
@@ -38,6 +34,12 @@ COPY meta/models.yml .
 ENTRYPOINT ["./entrypoint.sh"]
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service cmd/searchd/main.go" -command="./openslides-search-service"
 
+
+FROM development as development-fullstack
+
+COPY --from=autoupdate / /openslides-autoupdate-service
+RUN echo 'replace github.com/OpenSlides/openslides-autoupdate-service => /openslides-autoupdate-service' >> go.mod && \
+    go mod tidy
 
 # Productive build
 FROM alpine:3
