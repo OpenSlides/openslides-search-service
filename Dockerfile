@@ -35,6 +35,12 @@ ENTRYPOINT ["./entrypoint.sh"]
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service cmd/searchd/main.go" -command="./openslides-search-service"
 
 
+FROM development as development-fullstack
+
+COPY --from=autoupdate / /openslides-autoupdate-service
+RUN echo 'replace github.com/OpenSlides/openslides-autoupdate-service => /openslides-autoupdate-service' >> go.mod && \
+    go mod tidy
+
 # Productive build
 FROM alpine:3
 
