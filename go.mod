@@ -6,7 +6,7 @@ require (
 	github.com/OpenSlides/openslides-autoupdate-service v0.4.1-0.20230912062233-f037fa16c288
 	github.com/blevesearch/bleve/v2 v2.4.2
 	github.com/buger/jsonparser v1.1.1
-	github.com/goccy/go-yaml v1.12.0
+	github.com/goccy/go-yaml v1.13.1
 	github.com/jackc/pgx/v5 v5.7.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.26.0
@@ -32,7 +32,7 @@ require (
 	github.com/blevesearch/zapx/v14 v14.3.10 // indirect
 	github.com/blevesearch/zapx/v15 v15.3.13 // indirect
 	github.com/blevesearch/zapx/v16 v16.1.5 // indirect
-	github.com/fatih/color v1.16.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -48,8 +48,7 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ostcar/topic v0.4.1 // indirect
 	go.etcd.io/bbolt v1.3.7 // indirect
-	golang.org/x/crypto v0.27.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
-	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
+	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	google.golang.org/protobuf v1.29.0 // indirect
 )
