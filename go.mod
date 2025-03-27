@@ -3,11 +3,11 @@ module github.com/OpenSlides/openslides-search-service
 go 1.24.0
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250319183840-04da3dd3bb62
+	github.com/OpenSlides/openslides-go v0.0.0-20250327144737-2738cf949d71
 	github.com/blevesearch/bleve/v2 v2.4.4
 	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.15.23
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.31.0
 )
@@ -32,7 +32,7 @@ require (
 	github.com/blevesearch/zapx/v14 v14.3.10 // indirect
 	github.com/blevesearch/zapx/v15 v15.3.16 // indirect
 	github.com/blevesearch/zapx/v16 v16.1.9-0.20241217210638-a0519e7caf3b // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
