@@ -5,13 +5,13 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250325062824-88dd0bcc13ed
+	github.com/OpenSlides/openslides-go v0.0.0-20250422142046-8aac50248ebf
 	github.com/blevesearch/bleve/v2 v2.5.0
 	github.com/buger/jsonparser v1.1.1
-	github.com/goccy/go-yaml v1.15.23
+	github.com/goccy/go-yaml v1.17.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/sys v0.31.0
+	golang.org/x/sys v0.32.0
 )
 
 require (
@@ -47,8 +47,8 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ostcar/topic v0.4.1 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/protobuf v1.29.0 // indirect
 )
