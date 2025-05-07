@@ -11,7 +11,7 @@ require (
 	github.com/goccy/go-yaml v1.17.1
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/sys v0.32.0
+	golang.org/x/sys v0.33.0
 )
 
 require (
