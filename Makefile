@@ -20,8 +20,11 @@ build-dev:
 # docker build . --target development --tag openslides-search-dev
 
 run-tests:
-	docker build . --target testing --tag openslides-search-test
-	docker run openslides-search-test
+	bash dev/run-tests.sh
+
+#run-tests:
+#	docker build . --target testing --tag openslides-search-test
+#	docker run openslides-search-test
 
 all: gofmt gotest golinter
 
