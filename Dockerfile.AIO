@@ -1,6 +1,3 @@
-# Question: Warum hat prod jetzt aufeinmal alpine:3 als base image und nicht wie bei den anderen scratch
-#           Build geht auch ohne Fehler durch wenn man scratch verwendet
-
 ARG CONTEXT=prod
 ARG GO_IMAGE_VERSION=1.24.3
 ARG ALPINE_VERSION=3
@@ -21,19 +18,18 @@ RUN go mod download
 COPY cmd cmd
 COPY pkg pkg
 
-
 LABEL org.opencontainers.image.title="OpenSlides Search Service"
 LABEL org.opencontainers.image.description="The Search Service is a http endpoint where the clients can search for data within Openslides."
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-search-service"
 
+EXPOSE 9050
 
 # Development Image
 
 FROM base as dev
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
-EXPOSE 9050
 
 WORKDIR /root
 COPY entrypoint.sh ./
@@ -58,18 +54,13 @@ FROM base as builder
 RUN go build -o openslides-search-service cmd/searchd/main.go
 
 
-FROM alpine:${ALPINE_VERSION} as prod
-ARG ALPINE_VERSION
-
-LABEL org.opencontainers.image.title="OpenSlides Search Service"
-LABEL org.opencontainers.image.description="The Search Service is a http endpoint where the clients can search for data within Openslides."
-LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-search-service"
+FROM scratch as prod
 
 COPY entrypoint.sh ./
 COPY meta/search.yml .
 COPY meta/models.yml .
 COPY --from=builder /root/openslides-search-service/openslides-search-service .
+
 EXPOSE 9050
 ENTRYPOINT ["./entrypoint.sh"]
 CMD exec ./openslides-search-service
