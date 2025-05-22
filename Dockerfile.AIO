@@ -2,7 +2,7 @@
 #           Build geht auch ohne Fehler durch wenn man scratch verwendet
 
 ARG CONTEXT=prod
-ARG GO_IMAGE_VERSION=1.24.1
+ARG GO_IMAGE_VERSION=1.24.3
 ARG ALPINE_VERSION=3
 
 FROM golang:${GO_IMAGE_VERSION}-alpine as base
