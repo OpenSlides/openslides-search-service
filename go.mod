@@ -5,11 +5,11 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250521145008-8e4ed1371a71
+	github.com/OpenSlides/openslides-go v0.0.0-20250602214629-1d5b7cd68c14
 	github.com/blevesearch/bleve/v2 v2.5.1
 	github.com/buger/jsonparser v1.1.1
-	github.com/goccy/go-yaml v1.17.1
-	github.com/jackc/pgx/v5 v5.7.4
+	github.com/goccy/go-yaml v1.18.0
+	github.com/jackc/pgx/v5 v5.7.5
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.33.0
 )
