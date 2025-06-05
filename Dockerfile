@@ -1,12 +1,10 @@
 ARG CONTEXT=prod
-ARG GO_IMAGE_VERSION=1.24.3
 ARG ALPINE_VERSION=3
 
-FROM golang:${GO_IMAGE_VERSION}-alpine as base
+FROM golang:1.24.3-alpine as base
 
 ## Setup
 ARG CONTEXT
-ARG GO_IMAGE_VERSION
 WORKDIR /root/openslides-search-service
 ENV ${CONTEXT}=1
 
