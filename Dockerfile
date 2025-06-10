@@ -1,5 +1,4 @@
 ARG CONTEXT=prod
-ARG ALPINE_VERSION=3
 
 FROM golang:1.24.3-alpine as base
 
