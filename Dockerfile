@@ -25,8 +25,7 @@ LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-
 
 EXPOSE 9050
 
-## Command
-CMD ["CompileDaemon","-log-prefix=false","-build='go build'","-command='./openslides-icc-service'"]
+
 
 
 # Development Image
@@ -42,6 +41,8 @@ COPY meta/models.yml .
 ## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
+## Command
+CMD CompileDaemon -log-prefix=false -build="go build -o search-service ./openslides-search-service/cmd/searchd/main.go" -command="./search-service"
 
 
 # Testing Image
@@ -49,7 +50,7 @@ FROM base as tests
 
 RUN apk add build-base --no-cache
 
-
+CMD go vet ./... && go test -test.short ./...
 
 
 
@@ -61,6 +62,7 @@ RUN go build -o openslides-search-service cmd/searchd/main.go
 FROM alpine:3 as prod
 
 ARG CONTEXT
+ENV ${CONTEXT}=1
 
 WORKDIR /
 
@@ -78,8 +80,6 @@ LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-
 EXPOSE 9050
 
 ## Command
-ENV ${CONTEXT}=1
-COPY ./dev/command.sh ./
-RUN chmod +x command.sh
-CMD ["./command.sh"]
 ENTRYPOINT ["./entrypoint.sh"]
+
+CMD exec ./openslides-search-service
