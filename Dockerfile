@@ -26,9 +26,7 @@ LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-
 EXPOSE 9050
 
 ## Command
-COPY ./dev/command.sh ./
-RUN chmod +x command.sh
-CMD ["./command.sh"]
+CMD ["CompileDaemon","-log-prefix=false","-build='go build'","-command='./openslides-icc-service'"]
 
 
 # Development Image
@@ -41,7 +39,7 @@ COPY entrypoint.sh ./
 COPY meta/search.yml .
 COPY meta/models.yml .
 
-## Command
+## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
 
