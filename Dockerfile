@@ -33,7 +33,6 @@ FROM base as dev
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
 
-WORKDIR /app
 COPY entrypoint.sh ./
 COPY meta/search.yml .
 COPY meta/models.yml .
@@ -42,7 +41,7 @@ COPY meta/models.yml .
 ENTRYPOINT ["./entrypoint.sh"]
 
 ## Command
-CMD CompileDaemon -log-prefix=false -build="go build -o search-service ./openslides-search-service/cmd/searchd/main.go" -command="./search-service"
+CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"
 
 
 # Testing Image
