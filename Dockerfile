@@ -4,7 +4,7 @@ FROM golang:1.24.3-alpine as base
 
 ## Setup
 ARG CONTEXT
-WORKDIR /root/openslides-search-service
+WORKDIR /app/openslides-search-service
 ENV ${CONTEXT}=1
 
 
@@ -33,7 +33,7 @@ FROM base as dev
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
 
-WORKDIR /root
+WORKDIR /app
 COPY entrypoint.sh ./
 COPY meta/search.yml .
 COPY meta/models.yml .
@@ -69,7 +69,7 @@ WORKDIR /
 COPY entrypoint.sh ./
 COPY meta/search.yml .
 COPY meta/models.yml .
-COPY --from=builder /root/openslides-search-service/openslides-search-service .
+COPY --from=builder /app/openslides-search-service/openslides-search-service .
 
 ## External Information
 LABEL org.opencontainers.image.title="OpenSlides Search Service"
