@@ -6,8 +6,8 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
-github.com/OpenSlides/openslides-go v0.0.0-20250617124132-4f460d0ccd18 h1:vH0b5DdudnIBSUn6yOD30GQGLgEi2EOKOzuYZWKngeY=
-github.com/OpenSlides/openslides-go v0.0.0-20250617124132-4f460d0ccd18/go.mod h1:CN6WcgMy3EV8M7hVXLlGY49xDAK7h8e8dDLWVBnjGy8=
+github.com/OpenSlides/openslides-go v0.0.0-20250620110000-412cb3598c5f h1:fqC3POQ82Wv5eIjFAg+NCjuny12UETTrZu73uKGj+mQ=
+github.com/OpenSlides/openslides-go v0.0.0-20250620110000-412cb3598c5f/go.mod h1:CN6WcgMy3EV8M7hVXLlGY49xDAK7h8e8dDLWVBnjGy8=
 github.com/RoaringBitmap/roaring/v2 v2.4.5 h1:uGrrMreGjvAtTBobc0g5IrW1D5ldxDQYe2JW2gggRdg=
 github.com/RoaringBitmap/roaring/v2 v2.4.5/go.mod h1:FiJcsfkGje/nZBZgCu0ZxCPOKD/hVXDS2dXi7/eUFE0=
 github.com/bits-and-blooms/bitset v1.12.0/go.mod h1:7hO7Gc7Pp1vODcmWvKMRA9BNmbv6a/7QIWpPxHddWR8=
