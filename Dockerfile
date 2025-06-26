@@ -5,7 +5,9 @@ FROM golang:1.24.3-alpine as base
 ## Setup
 ARG CONTEXT
 WORKDIR /app/openslides-search-service
-ENV ${CONTEXT}=1
+# Used for easy target differentiation
+ARG ${CONTEXT}=1 
+ENV APP_CONTEXT=${CONTEXT}
 
 
 ## Installs
@@ -61,9 +63,9 @@ RUN go build -o openslides-search-service cmd/searchd/main.go
 FROM alpine:3 as prod
 
 ARG CONTEXT
-ENV ${CONTEXT}=1
 
 WORKDIR /
+ENV APP_CONTEXT=prod
 
 COPY entrypoint.sh ./
 COPY meta/search.yml .
