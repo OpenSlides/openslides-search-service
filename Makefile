@@ -20,9 +20,7 @@ run-tests:
 	bash dev/run-tests.sh
 
 run-lint:
-	gofmt -l -s -w .
-	go test ./...
-	golint -set_exit_status ./...
+	bash dev/run-lint.sh -l
 
 
 ########################## Deprecation List ##########################

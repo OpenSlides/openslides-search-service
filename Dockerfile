@@ -46,6 +46,8 @@ RUN apk add build-base --no-cache
 
 RUN go install golang.org/x/lint/golint@latest
 
+CMD ["sleep", "infinity"]
+
 # Production Image
 FROM base as builder
 RUN go build -o openslides-search-service cmd/searchd/main.go
