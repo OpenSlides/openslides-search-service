@@ -1,9 +1,16 @@
+SERVICE=search 
+
 build-dev:
-	docker build . --target development --tag openslides-search-dev
+	bash ../dev/scripts/makefile/build-service.sh $(SERVICE) dev
+
+build-prod:
+	bash ../dev/scripts/makefile/build-service.sh $(SERVICE) prod
+
+build-test:
+	bash ../dev/scripts/makefile/build-service.sh $(SERVICE) tests
 
 run-tests:
-	docker build . --target testing --tag openslides-search-test
-	docker run openslides-search-test
+	bash dev/run-tests.sh
 
 all: gofmt gotest golinter
 
