@@ -17,11 +17,6 @@ COPY cmd cmd
 COPY pkg pkg
 
 ## External Information
-LABEL org.opencontainers.image.title="OpenSlides Search Service"
-LABEL org.opencontainers.image.description="The Search Service is a http endpoint where the clients can search for data within Openslides."
-LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-search-service"
-
 EXPOSE 9050
 
 # Development Image
@@ -52,15 +47,14 @@ RUN go build -o openslides-search-service cmd/searchd/main.go
 
 FROM alpine:3 as prod
 
+## Setup
 ARG CONTEXT
-
-WORKDIR /
 ENV APP_CONTEXT=prod
 
-COPY entrypoint.sh ./
-COPY meta/search.yml .
-COPY meta/models.yml .
-COPY --from=builder /app/openslides-search-service/openslides-search-service .
+COPY entrypoint.sh /
+COPY meta/search.yml /
+COPY meta/models.yml /
+COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
 LABEL org.opencontainers.image.title="OpenSlides Search Service"
