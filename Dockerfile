@@ -17,11 +17,6 @@ COPY cmd cmd
 COPY pkg pkg
 
 ## External Information
-LABEL org.opencontainers.image.title="OpenSlides Search Service"
-LABEL org.opencontainers.image.description="The Search Service is a http endpoint where the clients can search for data within Openslides."
-LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.source="https://github.com/OpenSlides/openslides-search-service"
-
 EXPOSE 9050
 
 # Development Image
@@ -42,11 +37,18 @@ CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-servic
 # Testing Image
 FROM base as tests
 
-RUN apk add build-base --no-cache
+COPY dev/container-tests.sh ./dev/container-tests.sh
 
-RUN go install golang.org/x/lint/golint@latest
+RUN apk add --no-cache \
+    build-base \
+    docker && \
+    go get -u github.com/ory/dockertest/v3 && \
+    go install golang.org/x/lint/golint@latest && \
+    chmod +x dev/container-tests.sh
 
-CMD ["sleep", "infinity"]
+## Command
+STOPSIGNAL SIGKILL
+CMD ["sleep", "inf"]
 
 # Production Image
 FROM base as builder
@@ -54,15 +56,14 @@ RUN go build -o openslides-search-service cmd/searchd/main.go
 
 FROM alpine:3 as prod
 
+## Setup
 ARG CONTEXT
-
-WORKDIR /
 ENV APP_CONTEXT=prod
 
-COPY entrypoint.sh ./
-COPY meta/search.yml .
-COPY meta/models.yml .
-COPY --from=builder /app/openslides-search-service/openslides-search-service .
+COPY entrypoint.sh /
+COPY meta/search.yml /
+COPY meta/models.yml /
+COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
 LABEL org.opencontainers.image.title="OpenSlides Search Service"

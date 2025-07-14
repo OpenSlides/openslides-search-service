@@ -9,7 +9,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v4
@@ -25,15 +25,3 @@ jobs:
 
     - name: test
       run: go test -timeout 30s -race ./...
-  
-  # This setups and runs the dev/run-tests.sh script
-  run-test-script:
-    name: Run-tests.sh Script
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run Test
-        uses: Janmtbehrens/OpenSlides/dev/actions/build-and-test-service@all-in-one
-        with:
-          service: search
