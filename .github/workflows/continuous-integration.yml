@@ -1,14 +1,15 @@
-name: Test
+name: CI - Build and Test Service
+
 on: [pull_request]
 jobs:
-  test:
+  continuous-tests:
     name: Test
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.24'
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v4
