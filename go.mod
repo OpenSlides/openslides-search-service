@@ -5,20 +5,20 @@ go 1.24.0
 toolchain go1.24.1
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250805143700-cd5920b822ad
-	github.com/blevesearch/bleve/v2 v2.5.2
+	github.com/OpenSlides/openslides-go v0.0.0-20250811202746-328aaf23d53a
+	github.com/blevesearch/bleve/v2 v2.5.3
 	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.18.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/sys v0.34.0
+	golang.org/x/sys v0.35.0
 )
 
 require (
 	github.com/RoaringBitmap/roaring/v2 v2.4.5 // indirect
 	github.com/bits-and-blooms/bitset v1.22.0 // indirect
 	github.com/blevesearch/bleve_index_api v1.2.8 // indirect
-	github.com/blevesearch/geo v0.2.3 // indirect
+	github.com/blevesearch/geo v0.2.4 // indirect
 	github.com/blevesearch/go-faiss v1.0.25 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
 	github.com/blevesearch/gtreap v0.1.1 // indirect
