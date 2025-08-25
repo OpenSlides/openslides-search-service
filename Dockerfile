@@ -1,6 +1,6 @@
 ARG CONTEXT=prod
 
-FROM golang:1.24.5-alpine as base
+FROM golang:1.24.5-alpine AS base
 
 ## Setup
 ARG CONTEXT
@@ -20,7 +20,7 @@ COPY pkg pkg
 EXPOSE 9050
 
 # Development Image
-FROM base as dev
+FROM base AS dev
 
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
 
@@ -35,7 +35,7 @@ ENTRYPOINT ["./entrypoint.sh"]
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"
 
 # Testing Image
-FROM base as tests
+FROM base AS tests
 
 COPY dev/container-tests.sh ./dev/container-tests.sh
 
@@ -51,10 +51,10 @@ STOPSIGNAL SIGKILL
 CMD ["sleep", "inf"]
 
 # Production Image
-FROM base as builder
+FROM base AS builder
 RUN go build -o openslides-search-service cmd/searchd/main.go
 
-FROM alpine:3 as prod
+FROM alpine:3 AS prod
 
 ## Setup
 ARG CONTEXT
