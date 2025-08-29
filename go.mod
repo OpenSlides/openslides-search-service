@@ -1,11 +1,9 @@
 module github.com/OpenSlides/openslides-search-service
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250811202746-328aaf23d53a
+	github.com/OpenSlides/openslides-go v0.0.0-20250829114952-69209213e237
 	github.com/blevesearch/bleve/v2 v2.5.3
 	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.18.0
@@ -46,7 +44,7 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ostcar/topic v0.4.1 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/protobuf v1.29.0 // indirect
 )
