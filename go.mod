@@ -3,7 +3,7 @@ module github.com/OpenSlides/openslides-search-service
 go 1.25.0
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20250824142938-77dee4b0c105
+	github.com/OpenSlides/openslides-go v0.0.0-20250902143830-36c8ff7e56f0
 	github.com/blevesearch/bleve/v2 v2.5.3
 	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.18.0
