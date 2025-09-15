@@ -9,7 +9,6 @@ services:
         user: $USER_ID:$GROUP_ID
         ports:
             - "9050:9050"
-        command: sleep infinity
         volumes:
             - ../pkg:/app/openslides-search-service/pkg
             - ../cmd:/app/openslides-search-service/cmd
