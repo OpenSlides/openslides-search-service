@@ -22,18 +22,22 @@ EXPOSE 9050
 # Development Image
 FROM base as dev
 
+## Installs
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
+RUN apk add make bash-completion postgresql-client
 
 COPY entrypoint.sh ./
 COPY meta/search.yml ./
 COPY meta/models.yml ./
+COPY meta ./meta
+COPY dev/mock_data.sql ./mock_data.sql
+COPY dev/create-models.sh ./create-models.sh
+
 
 ## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
 EXPOSE 9050
-
-COPY meta ./meta
 
 ## Command
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"

@@ -21,6 +21,7 @@ services:
             - DATABASE_PORT=5432
             - DATABASE_NAME=openslides
             - DATABASE_USER=openslides
+            - PGPASSWORD=openslides
             - OPENSLIDES_DEVELOPMENT=1
         depends_on:
             - auth
