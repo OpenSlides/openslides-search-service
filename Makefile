@@ -22,3 +22,8 @@ golinter:
 
 gofmt:
 	gofmt -l -s -w .
+
+run-clean-psql-setup:
+	make -C .. dev-stop search compose-local-branch
+	make -C .. dev-detached search compose-local-branch
+	make -C .. dev-enter search compose-local-branch ATTACH_TARGET_CONTAINER=search

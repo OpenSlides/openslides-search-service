@@ -29,7 +29,6 @@ import (
 	"github.com/blevesearch/bleve/v2/mapping"
 	"github.com/blevesearch/bleve/v2/registry"
 	"github.com/blevesearch/bleve/v2/search/query"
-	"github.com/buger/jsonparser"
 )
 
 // TextIndex manages a text index over a given database.
@@ -208,49 +207,51 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 	return indexMapping
 }
 
-func (bt bleveType) fill(fields map[string]*meta.Member, data []byte) {
+func (bt bleveType) fill(fields map[string]*meta.Member, data map[string]any) {
+
+	log.Infof("%d", len(data))
+	log.Infof("%d", len(fields))
+
 	for fname, field := range fields {
+		log.Info("Processing " + field.Description)
 		if !field.Searchable {
 			continue
 		}
-
+		log.Info("Processing " + string(len(data)))
 		switch fields[fname].Type {
 		case "string", "text":
-			if v, err := jsonparser.GetString(data, fname); err == nil {
+			if v, ok := data[fname].(string); ok {
 				bt[fname] = v
 				bt["_"+fname+"_original"] = v
 				continue
 			}
 		case "HTMLStrict", "HTMLPermissive", "generic-relation":
-			if v, err := jsonparser.GetString(data, fname); err == nil {
+			if v, ok := data[fname].(string); ok {
 				bt[fname] = v
 				continue
 			}
 		case "relation", "number":
-			if v, err := jsonparser.GetInt(data, fname); err == nil {
+			if v, ok := data[fname].(int); ok {
 				bt[fname] = v
 				continue
 			}
 		case "number[]":
 			bt[fname] = []int64{}
-			jsonparser.ArrayEach(data, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-				if v, err := jsonparser.GetInt(value); err == nil {
-					bt[fname] = append(bt[fname].([]int64), v)
-				}
-			}, fname)
+			arr := data[fname].([]int64)
+			for _, value := range arr {
+				bt[fname] = append(bt[fname].([]int64), value)
+			}
 			continue
 		case "json-int-string-map":
 			bt[fname] = []string{}
-			jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-				bt[fname] = append(bt[fname].([]string), string(value))
-				return nil
-			}, fname)
+			arr := data[fname].([]string)
+			for _, value := range arr {
+				bt[fname] = append(bt[fname].([]string), value)
+			}
 			continue
 		default:
-			if v, _, _, err := jsonparser.Get(data, fname); err == nil {
-				bt[fname] = v
-				continue
-			}
+			bt[fname] = data[fname]
+			continue
 		}
 
 		delete(bt, fname)
@@ -263,14 +264,14 @@ func (ti *TextIndex) update() error {
 
 	if err := ti.db.update(func(
 		evt updateEventType,
-		col string, id int, data []byte,
+		col string, id int32, data map[string]any,
 	) error {
 		// we dont care if its not an indexed type.
 		mcol := ti.collections[col]
 		if mcol == nil {
 			return nil
 		}
-		fqid := col + "/" + strconv.Itoa(id)
+		fqid := col + "/" + strconv.Itoa(int(id))
 		switch evt {
 		case addedEvent:
 			bt := newBleveType(col)
@@ -333,7 +334,7 @@ func (ti *TextIndex) build() error {
 
 	batch, batchCount := index.NewBatch(), 0
 
-	if err := ti.db.fill(func(_ updateEventType, col string, id int, data []byte) error {
+	if err := ti.db.fill(func(_ updateEventType, col string, id int32, data map[string]any) error {
 		// Dont care for collections which are not text indexed.
 		mcol := ti.collections[col]
 		if mcol == nil {
@@ -342,7 +343,7 @@ func (ti *TextIndex) build() error {
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)
 
-		fqid := col + "/" + strconv.Itoa(id)
+		fqid := col + "/" + strconv.Itoa(int(id))
 		batch.Index(fqid, bt)
 		if batchCount++; batchCount >= ti.cfg.Index.Batch {
 			if err := index.Batch(batch); err != nil {
