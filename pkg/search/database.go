@@ -42,6 +42,17 @@ FROM
 	$1
 `
 
+	selectLatestUpdate = `
+SELECT
+	timestamp
+FROM
+	os_notify_log_t
+WHERE
+	fqid = '$1'
+ORDER BY xact_id DESC
+LIMIT 1
+	`
+
 	/* TODO selectDiffSQL = `
 	SELECT
 	  fqid,
@@ -154,9 +165,8 @@ func (db *Database) update(handler eventHandler) error {
 
 		for tablename, query := range queryMap {
 
-			rows, err := conn.Query(ctx, query, db.last)
+			rows, err := conn.Query(ctx, query)
 			if err != nil {
-				log.Info("Update")
 				return err
 			}
 			defer rows.Close()
@@ -217,6 +227,7 @@ func (db *Database) update(handler eventHandler) error {
 				} else {
 					// TODO: e.updated = updated
 					e.gen = ngen
+					// TODO: data is always non-nil, because we are no longer using the diff-SQL which would've returned nil for data if it shouldn't be updated
 					if data != nil {
 						if err := handler(changedEvent, tablename, id, data); err != nil {
 							return err
