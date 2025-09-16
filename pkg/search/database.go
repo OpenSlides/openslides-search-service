@@ -72,7 +72,7 @@ type Database struct {
 	cfg         *config.Config
 	last        time.Time
 	gen         uint16
-	collections map[string]map[int]*entry
+	collections map[string]map[int32]*entry
 }
 
 // NewDatabase creates a new database,
@@ -131,9 +131,9 @@ const (
 	removeEvent
 )
 
-type eventHandler func(evtType updateEventType, collection string, id int, data map[string]any) error
+type eventHandler func(evtType updateEventType, collection string, id int32, data map[string]any) error
 
-func nullEventHandler(updateEventType, string, int, map[string]any) error { return nil }
+func nullEventHandler(updateEventType, string, int32, map[string]any) error { return nil }
 
 func (db *Database) update(handler eventHandler) error {
 	start := time.Now()
@@ -187,14 +187,15 @@ func (db *Database) update(handler eventHandler) error {
 
 				// Assign data
 				data := make(map[string]any, len(values))
-				id := -1
+				var id int32
+				id = -1
 
 				log.Info(len(values))
 
 				for i, v := range values {
 					log.Info(columns[i])
 					if columns[i] == "id" {
-						id = v.(int)
+						id = v.(int32)
 						continue
 					}
 					data[columns[i]] = v
@@ -211,7 +212,7 @@ func (db *Database) update(handler eventHandler) error {
 				// handle changed and new
 				collection := db.collections[tablename]
 				if collection == nil {
-					collection = make(map[int]*entry)
+					collection = make(map[int32]*entry)
 					db.collections[tablename] = collection
 				}
 				e := collection[id]
@@ -270,11 +271,10 @@ func (db *Database) update(handler eventHandler) error {
 	})
 }
 
-func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[int]*entry, error) {
-	cols := make(map[string]map[int]*entry)
+func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[int32]*entry, error) {
+	cols := make(map[string]map[int32]*entry)
 	rows, err := conn.Query(ctx, selectCollectionSizesSQL)
 	if err != nil {
-		log.Info("Prealloc")
 		return nil, err
 	}
 	defer rows.Close()
@@ -284,7 +284,7 @@ func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[in
 		if err := rows.Scan(&size, &col); err != nil {
 			return nil, err
 		}
-		cols[col] = make(map[int]*entry, size)
+		cols[col] = make(map[int32]*entry, size)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -296,7 +296,6 @@ func (db *Database) generateTableQueryMap(ctx context.Context, conn *pgx.Conn) (
 	// Get all tablenames
 	tablenames, err := conn.Query(ctx, selectAllTableNames)
 	if err != nil {
-		log.Info("Getting tablenames")
 		return nil, err
 	}
 	defer tablenames.Close()
@@ -364,18 +363,17 @@ func (db *Database) fill(handler eventHandler) error {
 				}
 				// Assign data
 				data := make(map[string]any, len(values))
-				id := -1
-
-				log.Info(len(values))
+				var id int32
+				id = -1
 
 				for i, v := range values {
-					log.Info(columns[i])
 					if columns[i] == "id" {
-						id = v.(int)
+						id = v.(int32)
 						continue
 					}
 					data[columns[i]] = v
 				}
+				log.Infof("Fill %s: %d datapoints for id %d ", tablename, len(data), id)
 
 				if id == -1 {
 					// Discard this table
@@ -386,7 +384,7 @@ func (db *Database) fill(handler eventHandler) error {
 				collection := cols[tablename]
 				if collection == nil {
 					log.Warnf("alloc collection %q. This should has happend before.\n", tablename)
-					collection = make(map[int]*entry)
+					collection = make(map[int32]*entry)
 					cols[tablename] = collection
 				}
 				if err := handler(addedEvent, tablename, id, data); err != nil {

@@ -208,11 +208,16 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 }
 
 func (bt bleveType) fill(fields map[string]*meta.Member, data map[string]any) {
+
+	log.Infof("%d", len(data))
+	log.Infof("%d", len(fields))
+
 	for fname, field := range fields {
+		log.Info("Processing " + field.Description)
 		if !field.Searchable {
 			continue
 		}
-
+		log.Info("Processing " + string(len(data)))
 		switch fields[fname].Type {
 		case "string", "text":
 			if v, ok := data[fname].(string); ok {
@@ -259,14 +264,14 @@ func (ti *TextIndex) update() error {
 
 	if err := ti.db.update(func(
 		evt updateEventType,
-		col string, id int, data map[string]any,
+		col string, id int32, data map[string]any,
 	) error {
 		// we dont care if its not an indexed type.
 		mcol := ti.collections[col]
 		if mcol == nil {
 			return nil
 		}
-		fqid := col + "/" + strconv.Itoa(id)
+		fqid := col + "/" + strconv.Itoa(int(id))
 		switch evt {
 		case addedEvent:
 			bt := newBleveType(col)
@@ -329,7 +334,7 @@ func (ti *TextIndex) build() error {
 
 	batch, batchCount := index.NewBatch(), 0
 
-	if err := ti.db.fill(func(_ updateEventType, col string, id int, data map[string]any) error {
+	if err := ti.db.fill(func(_ updateEventType, col string, id int32, data map[string]any) error {
 		// Dont care for collections which are not text indexed.
 		mcol := ti.collections[col]
 		if mcol == nil {
@@ -338,7 +343,7 @@ func (ti *TextIndex) build() error {
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)
 
-		fqid := col + "/" + strconv.Itoa(id)
+		fqid := col + "/" + strconv.Itoa(int(id))
 		batch.Index(fqid, bt)
 		if batchCount++; batchCount >= ti.cfg.Index.Batch {
 			if err := index.Batch(batch); err != nil {
