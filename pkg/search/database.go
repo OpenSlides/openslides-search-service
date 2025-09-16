@@ -7,10 +7,11 @@ package search
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/jackc/pgx/v5"
@@ -19,27 +20,35 @@ import (
 const (
 	selectCollectionSizesSQL = `
 SELECT
-  count(*),
-  left(fqid, position('/' IN fqid)-1) coll
-FROM models
-WHERE NOT deleted
-GROUP BY coll`
+	n_live_tup,relname
+FROM
+	pg_stat_user_tables
+ORDER BY n_live_tup DESC
+`
 
-	selectAllSQL = `
+	selectAllTableNames = `
 SELECT
-  fqid,
-  data::text,
-  updated
-FROM models
-WHERE NOT deleted`
+	tablename
+FROM
+	pg_tables
+WHERE
+	schemaname = 'public'
+`
 
-	selectDiffSQL = `
+	selectTableContentTemplate = `
 SELECT
-  fqid,
-  CASE WHEN updated > $1 THEN data::text ELSE NULL END,
-  updated
-FROM models
-WHERE NOT deleted`
+	*
+FROM
+	$1
+`
+
+	/* TODO selectDiffSQL = `
+	SELECT
+	  fqid,
+	  CASE WHEN updated > $1 THEN data::text ELSE NULL END,
+	  updated
+	FROM models
+	WHERE NOT deleted`*/
 )
 
 type entry struct {
@@ -111,9 +120,9 @@ const (
 	removeEvent
 )
 
-type eventHandler func(evtType updateEventType, collection string, id int, data []byte) error
+type eventHandler func(evtType updateEventType, collection string, id int, data map[string]any) error
 
-func nullEventHandler(updateEventType, string, int, []byte) error { return nil }
+func nullEventHandler(updateEventType, string, int, map[string]any) error { return nil }
 
 func (db *Database) update(handler eventHandler) error {
 	start := time.Now()
@@ -130,65 +139,97 @@ func (db *Database) update(handler eventHandler) error {
 	defer func() {
 		log.Debugf("updating database took %v\n", time.Since(start))
 	}()
+
 	return db.run(func(ctx context.Context, conn *pgx.Conn) error {
-		rows, err := conn.Query(ctx, selectDiffSQL, db.last)
+
+		queryMap, err := db.generateTableQueryMap(ctx, conn)
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
 
 		before := db.numEntries()
 		var unchanged, added, entries int
 
 		ngen := db.gen + 1 // may overflow but thats okay.
 
-		for rows.Next() {
-			var (
-				fqid    string
-				data    []byte
-				updated time.Time
-			)
-			if err := rows.Scan(&fqid, &data, &updated); err != nil {
+		for tablename, query := range queryMap {
+
+			rows, err := conn.Query(ctx, query, db.last)
+			if err != nil {
+				log.Info("Update")
 				return err
 			}
-			entries++
-			col, id, err := splitFqid(fqid)
-			if err != nil {
-				log.Errorf("error: %v\n", err)
-				continue
+			defer rows.Close()
+
+			// Get column names of table
+			descriptions := rows.FieldDescriptions()
+			columns := make([]string, len(descriptions))
+
+			for i, description := range descriptions {
+				columns[i] = description.Name
 			}
-			// handle changed and new
-			collection := db.collections[col]
-			if collection == nil {
-				collection = make(map[int]*entry)
-				db.collections[col] = collection
-			}
-			e := collection[id]
-			if e == nil {
-				if err := handler(addedEvent, col, id, data); err != nil {
+
+			for rows.Next() {
+				values, err := rows.Values()
+				if err != nil {
 					return err
 				}
-				collection[id] = &entry{
-					updated: updated,
-					gen:     ngen,
+
+				// Assign data
+				data := make(map[string]any, len(values))
+				id := -1
+
+				log.Info(len(values))
+
+				for i, v := range values {
+					log.Info(columns[i])
+					if columns[i] == "id" {
+						id = v.(int)
+						continue
+					}
+					data[columns[i]] = v
 				}
-				added++
-			} else {
-				e.updated = updated
-				e.gen = ngen
-				if data != nil {
-					if err := handler(changedEvent, col, id, data); err != nil {
+
+				if id == -1 {
+					// Discard this table
+					log.Info(tablename + " discarded, for there is no id column found")
+					break
+				}
+
+				entries++
+
+				// handle changed and new
+				collection := db.collections[tablename]
+				if collection == nil {
+					collection = make(map[int]*entry)
+					db.collections[tablename] = collection
+				}
+				e := collection[id]
+				if e == nil {
+					if err := handler(addedEvent, tablename, id, data); err != nil {
 						return err
 					}
+					collection[id] = &entry{
+						// TODO: updated: updated,
+						gen: ngen,
+					}
+					added++
 				} else {
-					unchanged++
+					// TODO: e.updated = updated
+					e.gen = ngen
+					if data != nil {
+						if err := handler(changedEvent, tablename, id, data); err != nil {
+							return err
+						}
+					} else {
+						unchanged++
+					}
 				}
 			}
+			if err := rows.Err(); err != nil {
+				return err
+			}
 		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-
 		// TODO: Do some clever arithmetics based on
 		// before, entries, added and unchanged to
 		// early stop this.
@@ -222,6 +263,7 @@ func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[in
 	cols := make(map[string]map[int]*entry)
 	rows, err := conn.Query(ctx, selectCollectionSizesSQL)
 	if err != nil {
+		log.Info("Prealloc")
 		return nil, err
 	}
 	defer rows.Close()
@@ -239,6 +281,33 @@ func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[in
 	return cols, nil
 }
 
+func (db *Database) generateTableQueryMap(ctx context.Context, conn *pgx.Conn) (map[string]string, error) {
+	// Get all tablenames
+	tablenames, err := conn.Query(ctx, selectAllTableNames)
+	if err != nil {
+		log.Info("Getting tablenames")
+		return nil, err
+	}
+	defer tablenames.Close()
+
+	// Construct Query Map
+	queryMap := make(map[string]string)
+
+	for tablenames.Next() {
+		// Scan tablename
+		var tablename string
+		tablenames.Scan(&tablename)
+
+		// Create SQL Query
+		constructedSQLStatement := strings.Replace(selectTableContentTemplate, "$1", tablename, -1)
+
+		// Add to queryMap
+		queryMap[tablename] = constructedSQLStatement
+	}
+
+	return queryMap, nil
+}
+
 func (db *Database) fill(handler eventHandler) error {
 	start := time.Now()
 	defer func() {
@@ -254,51 +323,82 @@ func (db *Database) fill(handler eventHandler) error {
 		if err != nil {
 			return err
 		}
-		rows, err := conn.Query(ctx, selectAllSQL)
+
+		queryMap, err := db.generateTableQueryMap(ctx, conn)
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
-		var numEntries, size int
 
-		for rows.Next() {
-			var (
-				fqid    string
-				data    []byte
-				updated time.Time
-			)
-			if err := rows.Scan(&fqid, &data, &updated); err != nil {
-				return err
-			}
-			col, id, err := splitFqid(fqid)
+		for tablename, query := range queryMap {
+			var numEntries, size int
+
+			rows, err := conn.Query(ctx, query)
 			if err != nil {
-				log.Warnf("error: %v\n", err)
-				continue
-			}
-			collection := cols[col]
-			if collection == nil {
-				log.Warnf("alloc collection %q. This should has happend before.\n", col)
-				collection = make(map[int]*entry)
-				cols[col] = collection
-			}
-			if err := handler(addedEvent, col, id, data); err != nil {
 				return err
 			}
+			defer rows.Close()
 
-			size += len(data)
+			// Get column names of table
+			descriptions := rows.FieldDescriptions()
+			columns := make([]string, len(descriptions))
 
-			collection[id] = &entry{
-				updated: updated,
+			for i, description := range descriptions {
+				columns[i] = description.Name
 			}
 
-			numEntries++
+			for rows.Next() {
+				values, err := rows.Values()
+				if err != nil {
+					return err
+				}
+				// Assign data
+				data := make(map[string]any, len(values))
+				id := -1
+
+				log.Info(len(values))
+
+				for i, v := range values {
+					log.Info(columns[i])
+					if columns[i] == "id" {
+						id = v.(int)
+						continue
+					}
+					data[columns[i]] = v
+				}
+
+				if id == -1 {
+					// Discard this table
+					log.Info(tablename + " discarded, for there is no id column found")
+					break
+				}
+
+				collection := cols[tablename]
+				if collection == nil {
+					log.Warnf("alloc collection %q. This should has happend before.\n", tablename)
+					collection = make(map[int]*entry)
+					cols[tablename] = collection
+				}
+				if err := handler(addedEvent, tablename, id, data); err != nil {
+					return err
+				}
+
+				size += len(data)
+
+				/*collection[id] = &entry{
+					updated: updated,
+				}*/
+
+				numEntries++
+
+				if err := rows.Err(); err != nil {
+					return err
+				}
+
+				log.Debugf("num entries: %d / size: %d (%.2fMiB)\n",
+					numEntries,
+					size, float64(size)/(1024*1024))
+			}
 		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		log.Debugf("num entries: %d / size: %d (%.2fMiB)\n",
-			numEntries,
-			size, float64(size)/(1024*1024))
 
 		log.Debugf("num collections: %d\n", len(cols))
 		db.collections = cols

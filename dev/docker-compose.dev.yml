@@ -73,6 +73,7 @@ services:
             - POSTGRES_USER=openslides
             - POSTGRES_PASSWORD=openslides
             - POSTGRES_DB=openslides
+            - PGPASSWORD=openslides
         ports:
             - "5432:5432"
     redis:
