@@ -336,8 +336,6 @@ func (ti *TextIndex) build() error {
 			return nil
 		}
 
-		log.Infof("Indexing %s which exists %t", col, (ti.collections[col] != nil))
-
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)
 
@@ -434,8 +432,6 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	fuzzyMatchQuery := bleve.NewMatchQuery(question)
 	fuzzyMatchQuery.SetAutoFuzziness(true)
 	matchQuery := bleve.NewDisjunctionQuery(matchQueryOriginal, wildcardQuery, fuzzyMatchQuery)
-
-	log.Infof("q is %s and c is %v", question, collections)
 
 	if meetingID > 0 {
 		fmid := float64(meetingID)

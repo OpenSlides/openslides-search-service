@@ -105,7 +105,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if false {
+	if c.cfg.Restricter.URL != "" {
 
 		userID := c.auth.FromContext(r.Context())
 		requestBody := c.autoupdateRequestFromFQIDs(answers)
@@ -151,7 +151,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		filteredResp, err := transformRestricterResponse(answers, resp.Body)
-		log.Info(filteredResp)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
