@@ -6,4 +6,9 @@ until pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER"; do
   sleep 3
 done
 
+psql -1 -v ON_ERROR_STOP=1 -h postgres -p 5432 -U openslides -d openslides -f scheme_relational.sql
+psql -1 -v ON_ERROR_STOP=1 -h postgres -p 5432 -U openslides -d openslides -f base_data.sql
+psql -1 -v ON_ERROR_STOP=1 -h postgres -p 5432 -U openslides -d openslides -f test_data.sql
 psql -1 -v ON_ERROR_STOP=1 -h postgres -p 5432 -U openslides -d openslides -f mock_data.sql
+
+psql -h postgres -U openslides -p 5432 -d openslides

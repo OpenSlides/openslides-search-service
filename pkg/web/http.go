@@ -11,13 +11,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"syscall"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-go/auth"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
@@ -41,6 +42,7 @@ type auRequest struct {
 }
 
 func (c *controller) autoupdateRequestFromFQIDs(answers map[string]search.Answer) []auRequest {
+	// TODO
 	collIdxMap := map[string]int{}
 	var req []auRequest
 	for fqid := range answers {
@@ -103,11 +105,11 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.cfg.Restricter.URL != "" {
+	if false {
 
 		userID := c.auth.FromContext(r.Context())
-
 		requestBody := c.autoupdateRequestFromFQIDs(answers)
+
 		if len(requestBody) == 0 {
 			if _, err := w.Write([]byte("{}")); err != nil {
 				log.Errorf("error: writing response failed: %v\n", err)
@@ -149,6 +151,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		filteredResp, err := transformRestricterResponse(answers, resp.Body)
+		log.Info(filteredResp)
 		if err != nil {
 			handleErrorWithStatus(w, err)
 			return
@@ -157,6 +160,7 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(filteredResp); err != nil {
 			log.Errorf("error: writing response failed: %v\n", err)
 		}
+
 		return
 	}
 
@@ -186,9 +190,11 @@ func transformRestricterResponse(answers map[string]search.Answer, body io.ReadC
 		MatchedWords map[string][]string `json:"matched_by,omitempty"`
 		Score        *float64            `json:"score,omitempty"`
 	}
+
 	transformed := make(map[string]resultEntry)
 	for k, v := range restricterResponse {
 		parts := strings.Split(k, "/")
+
 		if len(parts) >= 3 {
 			fqid := parts[0] + "/" + parts[1]
 			field := parts[2]

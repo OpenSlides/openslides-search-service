@@ -25,6 +25,29 @@ services:
             - OPENSLIDES_DEVELOPMENT=1
         depends_on:
             - auth
+    autoupdate:
+        build:
+            context: "https://github.com/OpenSlides/openslides-autoupdate-service.git#${COMPOSE_REFERENCE_BRANCH:-main}"
+            target: "dev"
+            args:
+                CONTEXT: "dev"
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - ACTION_HOST=search
+            - ACTION_PORT=9005
+            - MESSAGE_BUS_HOST=redis
+            - MESSAGE_BUS_PORT=6379
+            - AUTH_HOST=auth
+            - AUTH_PORT=9004
+            - CACHE_HOST=redis
+            - CACHE_PORT=6379
+            - DATABASE_HOST=postgres
+            - DATABASE_PORT=5432
+            - DATABASE_NAME=openslides
+            - DATABASE_USER=openslides
+            - OPENSLIDES_DEVELOPMENT=1
     auth:
         build:
             context: "https://github.com/OpenSlides/openslides-auth-service.git#${COMPOSE_REFERENCE_BRANCH:-main}"

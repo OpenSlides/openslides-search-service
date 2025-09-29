@@ -208,16 +208,10 @@ func buildIndexMapping(collections meta.Collections) mapping.IndexMapping {
 }
 
 func (bt bleveType) fill(fields map[string]*meta.Member, data map[string]any) {
-
-	log.Infof("%d", len(data))
-	log.Infof("%d", len(fields))
-
 	for fname, field := range fields {
-		log.Info("Processing " + field.Description)
 		if !field.Searchable {
 			continue
 		}
-		log.Info("Processing " + string(len(data)))
 		switch fields[fname].Type {
 		case "string", "text":
 			if v, ok := data[fname].(string); ok {
@@ -336,14 +330,19 @@ func (ti *TextIndex) build() error {
 
 	if err := ti.db.fill(func(_ updateEventType, col string, id int32, data map[string]any) error {
 		// Dont care for collections which are not text indexed.
+
 		mcol := ti.collections[col]
 		if mcol == nil {
 			return nil
 		}
+
+		log.Infof("Indexing %s which exists %t", col, (ti.collections[col] != nil))
+
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)
 
 		fqid := col + "/" + strconv.Itoa(int(id))
+
 		batch.Index(fqid, bt)
 		if batchCount++; batchCount >= ti.cfg.Index.Batch {
 			if err := index.Batch(batch); err != nil {
@@ -436,6 +435,8 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	fuzzyMatchQuery.SetAutoFuzziness(true)
 	matchQuery := bleve.NewDisjunctionQuery(matchQueryOriginal, wildcardQuery, fuzzyMatchQuery)
 
+	log.Infof("q is %s and c is %v", question, collections)
+
 	if meetingID > 0 {
 		fmid := float64(meetingID)
 		meetingIDQuery := newNumericQuery(fmid)
@@ -472,13 +473,14 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	if err != nil {
 		return nil, err
 	}
-	log.Debugf("number hits: %d\n", len(result.Hits))
+	log.Infof("number hits: %d\n", len(result.Hits))
 	dupes := map[string]struct{}{}
 	answers := make(map[string]Answer, len(result.Hits))
 	numDupes := 0
 
 	for i := range result.Hits {
 		fqid := result.Hits[i].ID
+
 		if _, ok := dupes[fqid]; ok {
 			numDupes++
 			continue
@@ -491,7 +493,6 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 				matchedWords[location] = append(matchedWords[location], word)
 			}
 		}
-
 		dupes[fqid] = struct{}{}
 		answers[fqid] = Answer{
 			Score:        result.Hits[i].Score,

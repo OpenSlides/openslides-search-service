@@ -165,6 +165,9 @@ func (db *Database) update(handler eventHandler) error {
 
 		for tablename, query := range queryMap {
 
+			// Alter tablename to conform meta models
+			tablename := strings.TrimSuffix(tablename, "_t")
+
 			rows, err := conn.Query(ctx, query)
 			if err != nil {
 				return err
@@ -190,10 +193,7 @@ func (db *Database) update(handler eventHandler) error {
 				var id int32
 				id = -1
 
-				log.Info(len(values))
-
 				for i, v := range values {
-					log.Info(columns[i])
 					if columns[i] == "id" {
 						id = v.(int32)
 						continue
@@ -204,7 +204,7 @@ func (db *Database) update(handler eventHandler) error {
 				if id == -1 {
 					// Discard this table
 					log.Info(tablename + " discarded, for there is no id column found")
-					break
+					continue
 				}
 
 				entries++
@@ -281,10 +281,14 @@ func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[in
 	for rows.Next() {
 		var size int
 		var col string
+
 		if err := rows.Scan(&size, &col); err != nil {
 			return nil, err
 		}
-		cols[col] = make(map[int32]*entry, size)
+		// Alter column key name to conform meta models
+		key := strings.TrimSuffix(col, "_t")
+
+		cols[key] = make(map[int32]*entry, size)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -342,6 +346,9 @@ func (db *Database) fill(handler eventHandler) error {
 		for tablename, query := range queryMap {
 			var numEntries, size int
 
+			// Alter tablename to conform meta models
+			tablename := strings.TrimSuffix(tablename, "_t")
+
 			rows, err := conn.Query(ctx, query)
 			if err != nil {
 				return err
@@ -373,12 +380,12 @@ func (db *Database) fill(handler eventHandler) error {
 					}
 					data[columns[i]] = v
 				}
-				log.Infof("Fill %s: %d datapoints for id %d ", tablename, len(data), id)
+				log.Debugf("Fill %s: %d datapoints for id %d ", tablename, len(data), id)
 
 				if id == -1 {
 					// Discard this table
 					log.Info(tablename + " discarded, for there is no id column found")
-					break
+					continue
 				}
 
 				collection := cols[tablename]
@@ -387,6 +394,8 @@ func (db *Database) fill(handler eventHandler) error {
 					collection = make(map[int32]*entry)
 					cols[tablename] = collection
 				}
+
+				// Handle Data
 				if err := handler(addedEvent, tablename, id, data); err != nil {
 					return err
 				}
