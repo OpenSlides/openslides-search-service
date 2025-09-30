@@ -13,30 +13,15 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"runtime"
 	"sort"
 	"testing"
 
 	"github.com/OpenSlides/openslides-go/auth"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/OpenSlides/openslides-search-service/pkg/meta"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
-
-// For data in mock_data.sql and request string "q=test", response is
-// {"meeting/1":{"Score":0.013346666139263209,"MatchedWords":{"welcome_text":["text"]}},"meeting/2":{"Score":0.013346666139263209,"MatchedWords":{"welcome_text":["text"]}},"topic/2":{"Score":2.4873344398209953,"MatchedWords":{"_title_original":["test"],"text":["test","west"],"title":["test"]}}}
-
-// For data in mock_data.sql and request string "q=test&c=topic,meeting", response  is
-// {"meeting/1":{"Score":0.045900890677894324,"MatchedWords":{"_bleve_type":["meeting"],"welcome_text":["text"]}},"meeting/2":{"Score":0.045900890677894324,"MatchedWords":{"_bleve_type":["meeting"],"welcome_text":["text"]}},"topic/2":{"Score":1.1264835358858345,"MatchedWords":{"_bleve_type":["topic"],"_title_original":["test"],"text":["test","west"],"title":["test"]}}}
-
-// For data in mock_data.sql and request string "q=test&c=topic", response is
-// {"topic/2":{"Score":1.327796051982089,"MatchedWords":{"_bleve_type":["topic"],"_title_original":["test"],"text":["test","west"],"title":["test"]}}}
-
-// For data in mock_data.sql and request string "q=test&c=motion", response is
-// {}
-
-// For data in mock_data.sql and request string "q=teams", response is
-// {"topic/2":{"Score":0.8773653826510427,"MatchedWords":{"text":["team"]}}}
 
 const localSearchAddress = "http://localhost:9050/system/search?"
 
@@ -66,7 +51,7 @@ func signalContext() (context.Context, context.CancelFunc) {
 	return ctx, cancel
 }
 
-func initIndex() error {
+func initIndex() (*TextIndex, error) {
 	err := os.Setenv("RESTRICTER_URL", "...")
 
 	if err != nil {
@@ -75,25 +60,23 @@ func initIndex() error {
 
 	cfg, _ := config.GetConfig()
 
-	ctx, cancel := signalContext()
+	_, cancel := signalContext()
 	defer cancel()
 
 	models, err := meta.Fetch[meta.Collections]("../../meta/models.yml")
 	if err != nil {
-		return fmt.Errorf("loading models failed: %w", err)
+		return nil, fmt.Errorf("loading models failed: %w", err)
 	}
 
 	// For text indexing we can only use string fields.
 	searchModels := models.Clone()
-	containmentMap := map[string]map[string]struct{}{}
 
 	// If there are search filters configured cut search models further down.
 	if cfg.Models.Search != "" {
 		searchFilter, err := meta.Fetch[meta.Filters]("../../meta/search.yml")
 		if err != nil {
-			return fmt.Errorf("loading search filters failed. %w", err)
+			return nil, fmt.Errorf("loading search filters failed. %w", err)
 		}
-		containmentMap = searchFilter.ContainmentMap()
 		searchModels.Retain(searchFilter.Retain(false))
 	} else {
 		searchModels.Retain(meta.RetainStrings())
@@ -102,27 +85,10 @@ func initIndex() error {
 	db := NewDatabase(cfg)
 	ti, err := NewTextIndex(cfg, db, searchModels)
 	if err != nil {
-		return fmt.Errorf("creating text index failed: %w", err)
-	}
-	defer ti.Close()
-
-	runtime.GC()
-
-	qs, err := NewQueryServer(cfg, ti)
-	if err != nil {
-		return err
-	}
-	go qs.Run(ctx)
-
-	c := mockController{
-		cfg:       cfg,
-		auth:      nil,
-		qs:        qs,
-		reqFields: searchModels.CollectionRequestFields(),
-		collRel:   containmentMap,
+		return nil, fmt.Errorf("creating text index failed: %w", err)
 	}
 
-	return nil
+	return ti, nil
 }
 
 func TestUnrestrictedOutput(t *testing.T) {
@@ -149,10 +115,20 @@ func TestUnrestrictedOutput(t *testing.T) {
 		},
 	}
 
-	err := initIndex()
+	ti, err := initIndex()
 
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
+	}
+
+	answers, err := ti.Search("test", []string{"topic"}, 0)
+
+	if err != nil {
+		t.Errorf("Error in search index %s", err)
+	}
+
+	for _, val := range answers {
+		log.Info(val)
 	}
 
 	t.Run("Check output of unrestricted search queries", func(t *testing.T) {
