@@ -30,8 +30,6 @@ COPY entrypoint.sh ./
 COPY meta/search.yml ./
 COPY meta/models.yml ./
 COPY meta ./meta
-
-
 COPY meta/dev/sql/base_data.sql ./base_data.sql
 COPY meta/dev/sql/schema_relational.sql ./schema_relational.sql
 COPY meta/dev/sql/test_data.sql ./test_data.sql
