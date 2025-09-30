@@ -6,12 +6,21 @@ package search
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"reflect"
+	"runtime"
 	"sort"
 	"testing"
+
+	"github.com/OpenSlides/openslides-go/auth"
+	"github.com/OpenSlides/openslides-search-service/pkg/config"
+	"github.com/OpenSlides/openslides-search-service/pkg/meta"
+	"golang.org/x/sys/unix"
 )
 
 // For data in mock_data.sql and request string "q=test", response is
@@ -36,6 +45,86 @@ type OutputData struct {
 	OutputJSON string
 }
 
+type mockController struct {
+	cfg       *config.Config
+	auth      *auth.Auth
+	qs        *QueryServer
+	reqFields map[string]map[string]*meta.CollectionRelation
+	collRel   map[string]map[string]struct{}
+}
+
+func signalContext() (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, unix.SIGTERM)
+		<-sig
+		cancel()
+		<-sig
+		os.Exit(2)
+	}()
+	return ctx, cancel
+}
+
+func initIndex() error {
+	err := os.Setenv("RESTRICTER_URL", "...")
+
+	if err != nil {
+		fmt.Println("Error setting environment variable:", err)
+	}
+
+	cfg, _ := config.GetConfig()
+
+	ctx, cancel := signalContext()
+	defer cancel()
+
+	models, err := meta.Fetch[meta.Collections]("../../meta/models.yml")
+	if err != nil {
+		return fmt.Errorf("loading models failed: %w", err)
+	}
+
+	// For text indexing we can only use string fields.
+	searchModels := models.Clone()
+	containmentMap := map[string]map[string]struct{}{}
+
+	// If there are search filters configured cut search models further down.
+	if cfg.Models.Search != "" {
+		searchFilter, err := meta.Fetch[meta.Filters]("../../meta/search.yml")
+		if err != nil {
+			return fmt.Errorf("loading search filters failed. %w", err)
+		}
+		containmentMap = searchFilter.ContainmentMap()
+		searchModels.Retain(searchFilter.Retain(false))
+	} else {
+		searchModels.Retain(meta.RetainStrings())
+	}
+
+	db := NewDatabase(cfg)
+	ti, err := NewTextIndex(cfg, db, searchModels)
+	if err != nil {
+		return fmt.Errorf("creating text index failed: %w", err)
+	}
+	defer ti.Close()
+
+	runtime.GC()
+
+	qs, err := NewQueryServer(cfg, ti)
+	if err != nil {
+		return err
+	}
+	go qs.Run(ctx)
+
+	c := mockController{
+		cfg:       cfg,
+		auth:      nil,
+		qs:        qs,
+		reqFields: searchModels.CollectionRequestFields(),
+		collRel:   containmentMap,
+	}
+
+	return nil
+}
+
 func TestUnrestrictedOutput(t *testing.T) {
 	outputs := []OutputData{
 		{
@@ -58,6 +147,12 @@ func TestUnrestrictedOutput(t *testing.T) {
 			"q=teams",
 			`{"topic/2":{"Score":0.8773653826510427,"MatchedWords":{"text":["team"]}}}`,
 		},
+	}
+
+	err := initIndex()
+
+	if err != nil {
+		t.Errorf("Couldn't init index %s", err)
 	}
 
 	t.Run("Check output of unrestricted search queries", func(t *testing.T) {
