@@ -19,15 +19,20 @@ import (
 	"github.com/OpenSlides/openslides-go/auth"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/OpenSlides/openslides-search-service/pkg/meta"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
 const localSearchAddress = "http://localhost:9050/system/search?"
 
-type OutputData struct {
+type OutputDataHTMLQuery struct {
 	Query      string
 	OutputJSON string
+}
+
+type OutputDataIndexQuery struct {
+	WordQuery     string
+	Collections   []string
+	OutputAnswers map[string]Answer
 }
 
 type mockController struct {
@@ -92,26 +97,77 @@ func initIndex() (*TextIndex, error) {
 }
 
 func TestUnrestrictedOutput(t *testing.T) {
-	outputs := []OutputData{
+	outputs := []OutputDataIndexQuery{
 		{
-			"q=test",
-			`{"meeting/1":{"Score":0.013346666139263209,"MatchedWords":{"welcome_text":["text"]}},"meeting/2":{"Score":0.013346666139263209,"MatchedWords":{"welcome_text":["text"]}},"topic/2":{"Score":2.4873344398209953,"MatchedWords":{"_title_original":["test"],"text":["test","west"],"title":["test"]}}}`,
+			"test",
+			[]string{},
+			map[string]Answer{
+				"topic/2": Answer{2.4873344398209953, map[string][]string{
+					"_title_original": {"test"},
+					"text":            {"test", "west"},
+					"title":           {"test"},
+				},
+				},
+				"meeting/2": {0.013346666139263209, map[string][]string{
+					"welcome_text": {"text"},
+				},
+				},
+				"meeting/1": {0.013346666139263209, map[string][]string{
+					"welcome_text": {"text"},
+				},
+				},
+			},
 		},
 		{
-			"q=test&c=topic,meeting",
-			`{"meeting/1":{"Score":0.045900890677894324,"MatchedWords":{"_bleve_type":["meeting"],"welcome_text":["text"]}},"meeting/2":{"Score":0.045900890677894324,"MatchedWords":{"_bleve_type":["meeting"],"welcome_text":["text"]}},"topic/2":{"Score":1.1264835358858345,"MatchedWords":{"_bleve_type":["topic"],"_title_original":["test"],"text":["test","west"],"title":["test"]}}}`,
+			"test",
+			[]string{"topic", "meeting"},
+			map[string]Answer{
+				"topic/2": {2.5441687942241002, map[string][]string{
+					"_bleve_type":     {"topic"},
+					"_title_original": {"test"},
+					"text":            {"test", "west"},
+					"title":           {"test"},
+				},
+				},
+				"meeting/2": {0.47219033407422906, map[string][]string{
+					"_bleve_type":  {"meeting"},
+					"welcome_text": {"text"},
+				},
+				},
+				"meeting/1": {0.47219033407422906, map[string][]string{
+					"_bleve_type":  {"meeting"},
+					"welcome_text": {"text"},
+				},
+				},
+			},
 		},
 		{
-			"q=test&c=topic",
-			`{"topic/2":{"Score":1.327796051982089,"MatchedWords":{"_bleve_type":["topic"],"_title_original":["test"],"text":["test","west"],"title":["test"]}}}`,
+			"test",
+			[]string{"topic"},
+			map[string]Answer{
+				"topic/2": {3.2582204751744155, map[string][]string{
+					"_bleve_type":     {"topic"},
+					"_title_original": {"test"},
+					"text":            {"test", "west"},
+					"title":           {"test"},
+				},
+				},
+			},
 		},
 		{
-			"q=test&c=motion",
-			`{}`,
+			"test",
+			[]string{"motion"},
+			map[string]Answer{},
 		},
 		{
-			"q=teams",
-			`{"topic/2":{"Score":0.8773653826510427,"MatchedWords":{"text":["team"]}}}`,
+			"teams",
+			[]string{},
+			map[string]Answer{
+				"topic/2": {0.8773653826510427, map[string][]string{
+					"text": {"team"},
+				},
+				},
+			},
 		},
 	}
 
@@ -121,44 +177,27 @@ func TestUnrestrictedOutput(t *testing.T) {
 		t.Errorf("Couldn't init index %s", err)
 	}
 
-	answers, err := ti.Search("test", []string{"topic"}, 0)
-
 	if err != nil {
 		t.Errorf("Error in search index %s", err)
 	}
 
-	for _, val := range answers {
-		log.Info(val)
-	}
-
 	t.Run("Check output of unrestricted search queries", func(t *testing.T) {
 		for _, output := range outputs {
-			address := fmt.Sprintf("%s%s", localSearchAddress, output.Query)
-
-			response, err := http.Get(address)
+			answers, err := ti.Search(output.WordQuery, output.Collections, 0)
 
 			if err != nil {
-				t.Errorf("Couldn't establish connection with Search Service: %s", err)
-			}
-			defer response.Body.Close()
-
-			byteBody, err := io.ReadAll(response.Body)
-
-			if err != nil {
-				t.Errorf("Reading response body: %s", err)
+				t.Errorf("Error searching in text index: %s", err)
 			}
 
-			byteWantedOutput := []byte(output.OutputJSON + "\n") // Line feed character necessary for deep equal
-
-			if !byteEqualityByCharCount(byteBody, byteWantedOutput) {
-				t.Errorf("\nOutput of unrestricted query \"%s\" is\n%s\n  should be\n%s", output.Query, byteBody, byteWantedOutput)
+			if !reflect.DeepEqual(answers, output.OutputAnswers) {
+				t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", output.OutputAnswers, answers)
 			}
 		}
 	})
 }
 
 func TestRestrictedOutput(t *testing.T) {
-	outputs := []OutputData{
+	outputs := []OutputDataHTMLQuery{
 		{
 			"q=test",
 			`{"meeting/1":{"content":{"id":1,"name":"meeting"},"matched_by":{"welcome_text":["text"]},"score":0.013346666139263209},"meeting/2":{"content":{"id":2,"name":"name"},"matched_by":{"welcome_text":["text"]},"score":0.013346666139263209}}`,
@@ -201,7 +240,7 @@ func TestRestrictedOutput(t *testing.T) {
 			byteWantedOutput := []byte(output.OutputJSON)
 
 			if !byteEqualityByCharCount(byteBody, byteWantedOutput) {
-				t.Errorf("\nOutput of reestricted query \"%s\" is\n%s\n  should be\n%s", output.Query, byteBody, byteWantedOutput)
+				t.Errorf("\nOutput of restricted query \"%s\" is\n%s\n  should be\n%s", output.Query, byteBody, byteWantedOutput)
 			}
 		}
 	})
