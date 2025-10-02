@@ -12,6 +12,9 @@ build-test:
 run-tests:
 	bash dev/run-tests.sh
 
+run-tests-local-branch:
+	bash dev/run-tests.sh true
+
 all: gofmt gotest golinter
 
 gotest:
@@ -28,7 +31,7 @@ run-clean-psql-setup:
 	make -C .. dev-stop search compose-local-branch
 	make -C .. dev-detached search compose-local-branch
 	sleep 6
-	make -C .. dev-exec search EXEC_COMMAND="search bash create-models.sh"
+	make -C .. dev-exec search EXEC_COMMAND="search bash create-models.sh true"
 	sleep 6
 	make curl-search-string-default
 

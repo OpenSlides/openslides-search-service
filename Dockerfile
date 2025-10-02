@@ -40,13 +40,11 @@ COPY dev/create-models.sh ./create-models.sh
 ## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
-EXPOSE 9050
-
 ## Command
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"
 
 # Testing Image
-FROM base as tests
+FROM dev as tests
 
 COPY dev/container-tests.sh ./dev/container-tests.sh
 

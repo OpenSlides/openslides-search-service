@@ -102,7 +102,7 @@ func TestUnrestrictedOutput(t *testing.T) {
 			"test",
 			[]string{},
 			map[string]Answer{
-				"topic/2": Answer{2.4873344398209953, map[string][]string{
+				"topic/2": {2.4873344398209953, map[string][]string{
 					"_title_original": {"test"},
 					"text":            {"test", "west"},
 					"title":           {"test"},
@@ -189,7 +189,7 @@ func TestUnrestrictedOutput(t *testing.T) {
 				t.Errorf("Error searching in text index: %s", err)
 			}
 
-			if !reflect.DeepEqual(answers, output.OutputAnswers) {
+			if !compareAnswers(answers, output.OutputAnswers) {
 				t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", output.OutputAnswers, answers)
 			}
 		}
@@ -223,11 +223,11 @@ func TestRestrictedOutput(t *testing.T) {
 	t.Run("Check output of reestricted search queries", func(t *testing.T) {
 		for _, output := range outputs {
 			address := fmt.Sprintf("%s%s", localSearchAddress, output.Query)
-
 			response, err := http.Get(address)
-
 			if err != nil {
 				t.Errorf("Couldn't establish connection with Search Service: %s", err)
+				response.Body.Close()
+				continue
 			}
 			defer response.Body.Close()
 
@@ -267,4 +267,27 @@ func sortByteArray(a []byte) []byte {
 
 func byteEqualityByCharCount(a, b []byte) bool {
 	return reflect.DeepEqual(sortByteArray(a), sortByteArray(b))
+}
+
+// Can not use reflect.DeepEqual, since maps and arrays may have different orderings of elements
+// Instead, convert both Answer-maps to byte arrays, sort those arrays and check for equality on sorted byte arrays
+func compareAnswers(a, b map[string]Answer) bool {
+	byteA := convertAnswerMapToByteArray(a)
+	byteB := convertAnswerMapToByteArray(b)
+
+	return byteEqualityByCharCount(byteA, byteB)
+}
+
+func convertAnswerMapToByteArray(a map[string]Answer) []byte {
+	var byteA []byte
+
+	for _, answer := range a {
+		for _, words := range answer.MatchedWords {
+			for _, word := range words {
+				byteA = append(byteA, []byte(word)...)
+			}
+		}
+		byteA = append(byteA, []byte(fmt.Sprint(answer.Score))...)
+	}
+	return byteA
 }
