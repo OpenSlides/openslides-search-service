@@ -226,8 +226,6 @@ func TestRestrictedOutput(t *testing.T) {
 			response, err := http.Get(address)
 			if err != nil {
 				t.Errorf("Couldn't establish connection with Search Service: %s", err)
-				response.Body.Close()
-				continue
 			}
 			defer response.Body.Close()
 
