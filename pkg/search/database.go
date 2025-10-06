@@ -42,16 +42,23 @@ FROM
 	$1
 `
 
-	selectLatestUpdate = `
-SELECT
-	timestamp
+	selectLatestUpdates = `
+SELECT DISTINCT
+	fqid
 FROM
 	os_notify_log_t
 WHERE
-	fqid = '$1'
-ORDER BY xact_id DESC
-LIMIT 1
+	timestamp >= $1
 	`
+
+	selectElementFromTableTemplate = `
+SELECT
+	*
+FROM
+	$1
+WHERE
+	id = $2
+`
 
 	/* TODO selectDiffSQL = `
 	SELECT
@@ -153,22 +160,48 @@ func (db *Database) update(handler eventHandler) error {
 
 	return db.run(func(ctx context.Context, conn *pgx.Conn) error {
 
-		queryMap, err := db.generateTableQueryMap(ctx, conn)
+		updateLogs, err := conn.Query(ctx, selectLatestUpdates, db.last)
 		if err != nil {
 			return err
 		}
+		defer updateLogs.Close()
 
 		before := db.numEntries()
-		var unchanged, added, entries int
+		var added, entries int
 
 		ngen := db.gen + 1 // may overflow but thats okay.
 
-		for tablename, query := range queryMap {
+		changeMap := make(map[string]string)
 
-			// Alter tablename to conform meta models
-			tablename := strings.TrimSuffix(tablename, "_t")
+		// Convert each fqid to a tablename - id mapping
+		for updateLogs.Next() {
+			var fqid string
+			err = updateLogs.Scan(&fqid)
+			if err != nil {
+				return err
+			}
 
-			rows, err := conn.Query(ctx, query)
+			tableName, elementId, err := splitFqid(fqid)
+
+			if err != nil {
+				return err
+			}
+
+			changeMap[tableName] = fmt.Sprint(elementId)
+		}
+
+		updateLogs.Close()
+
+		// For each tablename - id mapping, query the corresponding row for data and insert it update the search index
+		for tablename, idInTable := range changeMap {
+			// Create SQL Query
+			constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
+			constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", idInTable, -1)
+
+			log.Debugf("A change has been registered: %s with id %s", tablename+"_t", idInTable)
+
+			// Query
+			rows, err := conn.Query(ctx, constructedSQLStatement)
 			if err != nil {
 				return err
 			}
@@ -228,13 +261,9 @@ func (db *Database) update(handler eventHandler) error {
 				} else {
 					// TODO: e.updated = updated
 					e.gen = ngen
-					// TODO: data is always non-nil, because we are no longer using the diff-SQL which would've returned nil for data if it shouldn't be updated
-					if data != nil {
-						if err := handler(changedEvent, tablename, id, data); err != nil {
-							return err
-						}
-					} else {
-						unchanged++
+
+					if err := handler(changedEvent, tablename, id, data); err != nil {
+						return err
 					}
 				}
 			}
@@ -242,11 +271,12 @@ func (db *Database) update(handler eventHandler) error {
 				return err
 			}
 		}
+
 		// TODO: Do some clever arithmetics based on
 		// before, entries, added and unchanged to
 		// early stop this.
 		var removed int
-		if unchanged != before {
+		if len(changeMap) > 0 {
 			for k, col := range db.collections {
 				for id, e := range col {
 					if e.gen != ngen {
@@ -262,8 +292,8 @@ func (db *Database) update(handler eventHandler) error {
 
 		log.Debugf("entries: %d / before: %d\n",
 			entries, before)
-		log.Debugf("unchanged: %d / added: %d / removed: %d\n",
-			unchanged, added, removed)
+		log.Debugf("added: %d / removed: %d\n",
+			added, removed)
 
 		db.last = start
 		db.gen = ngen
