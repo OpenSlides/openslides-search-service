@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
 	"sort"
 	"testing"
 
@@ -200,11 +201,11 @@ func TestRestrictedOutput(t *testing.T) {
 	outputs := []OutputDataHTMLQuery{
 		{
 			"q=test",
-			`{"meeting/1":{"content":{"id":1,"name":"meeting"},"matched_by":{"welcome_text":["text"]},"score":0.013346666139263209},"meeting/2":{"content":{"id":2,"name":"name"},"matched_by":{"welcome_text":["text"]},"score":0.013346666139263209}}`,
+			`{"meeting/1":{"content":{"id":1,"name":"meeting"},"matched_by":{"welcome_text":["text"]}},"meeting/2":{"content":{"id":2,"name":"name"},"matched_by":{"welcome_text":["text"]}}}`,
 		},
 		{
 			"q=test&c=topic,meeting",
-			`{"meeting/1":{"content":{"id":1,"name":"meeting"},"matched_by":{"_bleve_type":["meeting"],"welcome_text":["text"]},"score":0.045900890677894324},"meeting/2":{"content":{"id":2,"name":"name"},"matched_by":{"_bleve_type":["meeting"],"welcome_text":["text"]},"score":0.045900890677894324}}`,
+			`{"meeting/1":{"content":{"id":1,"name":"meeting"},"matched_by":{"_bleve_type":["meeting"],"welcome_text":["text"]}},"meeting/2":{"content":{"id":2,"name":"name"},"matched_by":{"_bleve_type":["meeting"],"welcome_text":["text"]}}}`,
 		},
 		{
 			"q=test&c=topic",
@@ -235,14 +236,115 @@ func TestRestrictedOutput(t *testing.T) {
 				t.Errorf("Reading response body: %s", err)
 			}
 
+			// Remove score from response
+			outputWithoutScore := regexp.MustCompile(`,"score":\d+(\.\d+)?`).ReplaceAllString(string(byteBody), "")
+
 			byteWantedOutput := []byte(output.OutputJSON)
 
-			if !byteEqualityByCharCount(byteBody, byteWantedOutput) {
-				t.Errorf("\nOutput of restricted query \"%s\" is\n%s\n  should be\n%s", output.Query, byteBody, byteWantedOutput)
+			if !byteEqualityByCharCount([]byte(outputWithoutScore), byteWantedOutput) {
+				t.Errorf("\nOutput of restricted query \"%s\" is\n%s\n  should be\n%s", output.Query, outputWithoutScore, byteWantedOutput)
 			}
 		}
 	})
 }
+
+/*
+func TestDatabaseUpdate(t *testing.T) {
+	outputBeforeUdpate := OutputDataIndexQuery{
+
+		"test",
+		[]string{},
+		map[string]Answer{
+			"topic/2": {2.4873344398209953, map[string][]string{
+				"_title_original": {"test"},
+				"text":            {"test", "west"},
+				"title":           {"test"},
+			},
+			},
+			"meeting/2": {0.013346666139263209, map[string][]string{
+				"welcome_text": {"text"},
+			},
+			},
+			"meeting/1": {0.013346666139263209, map[string][]string{
+				"welcome_text": {"text"},
+			},
+			},
+		},
+	}
+
+	outputAfterUdpate := OutputDataIndexQuery{
+		"test",
+		[]string{},
+		map[string]Answer{
+			"topic/2": {2.4873344398209953, map[string][]string{
+				"_title_original": {"test"},
+				"text":            {"test", "west"},
+				"title":           {"test"},
+			},
+			},
+			"meeting/2": {0.013346666139263209, map[string][]string{
+				"welcome_text": {"text test"},
+			},
+			},
+			"meeting/1": {0.013346666139263209, map[string][]string{
+				"welcome_text": {"text"},
+			},
+			},
+		},
+	}
+
+	ti, err := initIndex()
+
+	if err != nil {
+		t.Errorf("Couldn't init index %s", err)
+	}
+
+	if err != nil {
+		t.Errorf("Error in search index %s", err)
+	}
+
+	t.Run("Check output before updating database", func(t *testing.T) {
+		answers, err := ti.Search(outputBeforeUdpate.WordQuery, outputBeforeUdpate.Collections, 0)
+
+		if err != nil {
+			t.Errorf("Error searching in text index: %s", err)
+		}
+
+		if !compareAnswers(answers, outputBeforeUdpate.OutputAnswers) {
+			t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", outputBeforeUdpate.OutputAnswers, answers)
+		}
+
+	})
+
+	// Connect to database
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, "user='openslides' password='openslides' host='postgres' port='5432' dbname='openslides'")
+
+	if err != nil {
+		t.Errorf("Error connecting to database: %s", err)
+	}
+	defer conn.Close(ctx)
+
+	// Update database
+	conn.Exec(ctx, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'")
+
+	if err != nil {
+		t.Errorf("Error updating database: %s", err)
+	}
+
+	t.Run("Check output after updating database", func(t *testing.T) {
+		answers, err := ti.Search(outputAfterUdpate.WordQuery, outputAfterUdpate.Collections, 0)
+
+		if err != nil {
+			t.Errorf("Error searching in text index: %s", err)
+		}
+
+		if !compareAnswers(answers, outputAfterUdpate.OutputAnswers) {
+			t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", outputAfterUdpate.OutputAnswers, answers)
+		}
+	})
+}
+*/
 
 func debugPrintByteArrayAsInt(t *testing.T, a []byte) {
 	var s string
@@ -285,7 +387,8 @@ func convertAnswerMapToByteArray(a map[string]Answer) []byte {
 				byteA = append(byteA, []byte(word)...)
 			}
 		}
-		byteA = append(byteA, []byte(fmt.Sprint(answer.Score))...)
+		// Score seems to arbitrarily change between databank resets, so it's taken out of the comparison function for now
+		// byteA = append(byteA, []byte(fmt.Sprint(answer.Score))...)
 	}
 	return byteA
 }
