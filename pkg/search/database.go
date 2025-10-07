@@ -112,9 +112,9 @@ const (
 	removeEvent
 )
 
-type eventHandler func(evtType updateEventType, collection string, id int32, data map[string]any) error
+type eventHandler func(evtType updateEventType, collection string, fqid string, data map[string]any) error
 
-func nullEventHandler(updateEventType, string, int32, map[string]any) error { return nil }
+func nullEventHandler(updateEventType, string, string, map[string]any) error { return nil }
 
 func (db *Database) update(handler eventHandler) error {
 	start := time.Now()
@@ -169,7 +169,6 @@ func (db *Database) update(handler eventHandler) error {
 				fmt.Sprint(elementId),
 				operation,
 			})
-			log.Infof("Change found %s and %s", fmt.Sprint(elementId), operation)
 		}
 
 		updateLogs.Close()
@@ -181,7 +180,16 @@ func (db *Database) update(handler eventHandler) error {
 				constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
 				constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", updateOperation.fqid, -1)
 
-				log.Infof("A change has been registered: %s with id %s", tablename+"_t", updateOperation.fqid)
+				log.Debugf("A change has been registered: %s with id %s and operation %s", tablename+"_t", updateOperation.fqid, updateOperation.operation)
+
+				// Skip data collection if it was a delete event
+				if updateOperation.operation == "delete" {
+					removed++
+					if err := handler(removeEvent, tablename, updateOperation.fqid, nil); err != nil {
+						return err
+					}
+					continue
+				}
 
 				// Query
 				rows, err := conn.Query(ctx, constructedSQLStatement)
@@ -228,18 +236,13 @@ func (db *Database) update(handler eventHandler) error {
 					// Act based on operation
 					switch updateOperation.operation {
 					case "insert":
-						if err := handler(addedEvent, tablename, id, data); err != nil {
+						if err := handler(addedEvent, tablename, updateOperation.fqid, data); err != nil {
 							return err
 						}
 						added++
 					case "update":
 
-						if err := handler(changedEvent, tablename, id, data); err != nil {
-							return err
-						}
-					case "delete":
-						removed++
-						if err := handler(removeEvent, updateOperation.fqid, id, nil); err != nil {
+						if err := handler(changedEvent, tablename, updateOperation.fqid, data); err != nil {
 							return err
 						}
 					}
@@ -349,7 +352,7 @@ func (db *Database) fill(handler eventHandler) error {
 				}
 
 				// Handle Data
-				if err := handler(addedEvent, tablename, id, data); err != nil {
+				if err := handler(addedEvent, tablename, fmt.Sprintf("%s/%d", tablename, id), data); err != nil {
 					return err
 				}
 
