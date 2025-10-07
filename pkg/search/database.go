@@ -62,8 +62,7 @@ WHERE
 )
 
 type entry struct {
-	updated time.Time
-	gen     uint16
+	gen uint16
 }
 
 // Database manages the updates needed to drive the text index.
@@ -421,10 +420,6 @@ func (db *Database) fill(handler eventHandler) error {
 				}
 
 				size += len(data)
-
-				/*collection[id] = &entry{
-					updated: updated,
-				}*/
 
 				numEntries++
 
