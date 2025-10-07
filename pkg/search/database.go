@@ -18,14 +18,6 @@ import (
 )
 
 const (
-	selectCollectionSizesSQL = `
-SELECT
-	n_live_tup,relname
-FROM
-	pg_stat_user_tables
-ORDER BY n_live_tup DESC
-`
-
 	selectAllTableNames = `
 SELECT
 	tablename
@@ -43,12 +35,14 @@ FROM
 `
 
 	selectLatestUpdates = `
-SELECT DISTINCT
-	fqid
+SELECT DISTINCT ON (fqid)
+	fqid,
+	operation
 FROM
 	os_notify_log_t
 WHERE
 	timestamp >= $1
+ORDER BY fqid, timestamp DESC
 	`
 
 	selectElementFromTableTemplate = `
@@ -61,16 +55,16 @@ WHERE
 `
 )
 
-type entry struct {
-	gen uint16
+type updateOperation struct {
+	fqid      string
+	operation string
 }
 
 // Database manages the updates needed to drive the text index.
 type Database struct {
-	cfg         *config.Config
-	last        time.Time
-	gen         uint16
-	collections map[string]map[int32]*entry
+	cfg  *config.Config
+	last time.Time
+	gen  uint16
 }
 
 // NewDatabase creates a new database,
@@ -96,17 +90,6 @@ func (db *Database) run(fn func(context.Context, *pgx.Conn) error) error {
 	}
 	defer con.Close(ctx)
 	return fn(ctx, con)
-}
-
-func (db *Database) numEntries() int {
-	if db.collections == nil {
-		return 0
-	}
-	var sum int
-	for _, col := range db.collections {
-		sum += len(col)
-	}
-	return sum
 }
 
 func splitFqid(fqid string) (string, int, error) {
@@ -157,17 +140,17 @@ func (db *Database) update(handler eventHandler) error {
 		}
 		defer updateLogs.Close()
 
-		before := db.numEntries()
-		var added, entries int
+		var added, removed, entries int
 
 		ngen := db.gen + 1 // may overflow but thats okay.
 
-		changeMap := make(map[string]string)
+		changeMap := make(map[string]updateOperation)
 
 		// Convert each fqid to a tablename - id mapping
 		for updateLogs.Next() {
 			var fqid string
-			err = updateLogs.Scan(&fqid)
+			var operation string
+			err = updateLogs.Scan(&fqid, &operation)
 			if err != nil {
 				return err
 			}
@@ -178,18 +161,21 @@ func (db *Database) update(handler eventHandler) error {
 				return err
 			}
 
-			changeMap[tableName] = fmt.Sprint(elementId)
+			changeMap[tableName] = updateOperation{
+				fmt.Sprint(elementId),
+				operation,
+			}
 		}
 
 		updateLogs.Close()
 
 		// For each tablename - id mapping, query the corresponding row for data and insert it update the search index
-		for tablename, idInTable := range changeMap {
+		for tablename, updateOperation := range changeMap {
 			// Create SQL Query
 			constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
-			constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", idInTable, -1)
+			constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", updateOperation.fqid, -1)
 
-			log.Debugf("A change has been registered: %s with id %s", tablename+"_t", idInTable)
+			log.Debugf("A change has been registered: %s with id %s", tablename+"_t", updateOperation.fqid)
 
 			// Query
 			rows, err := conn.Query(ctx, constructedSQLStatement)
@@ -233,25 +219,21 @@ func (db *Database) update(handler eventHandler) error {
 
 				entries++
 
-				// handle changed and new
-				collection := db.collections[tablename]
-				if collection == nil {
-					collection = make(map[int32]*entry)
-					db.collections[tablename] = collection
-				}
-				e := collection[id]
-				if e == nil {
+				// Act based on operation
+				switch updateOperation.operation {
+				case "insert":
 					if err := handler(addedEvent, tablename, id, data); err != nil {
 						return err
 					}
-					collection[id] = &entry{
-						gen: ngen,
-					}
 					added++
-				} else {
-					e.gen = ngen
+				case "update":
 
 					if err := handler(changedEvent, tablename, id, data); err != nil {
+						return err
+					}
+				case "delete":
+					removed++
+					if err := handler(removeEvent, updateOperation.fqid, id, nil); err != nil {
 						return err
 					}
 				}
@@ -261,26 +243,8 @@ func (db *Database) update(handler eventHandler) error {
 			}
 		}
 
-		// TODO: Do some clever arithmetics based on
-		// before, entries, added and unchanged to
-		// early stop this.
-		var removed int
-		if len(changeMap) > 0 {
-			for k, col := range db.collections {
-				for id, e := range col {
-					if e.gen != ngen {
-						removed++
-						delete(col, id)
-						if err := handler(removeEvent, k, id, nil); err != nil {
-							return err
-						}
-					}
-				}
-			}
-		}
-
-		log.Debugf("entries: %d / before: %d\n",
-			entries, before)
+		log.Debugf("entries: %d",
+			entries)
 		log.Debugf("added: %d / removed: %d\n",
 			added, removed)
 
@@ -288,31 +252,6 @@ func (db *Database) update(handler eventHandler) error {
 		db.gen = ngen
 		return nil
 	})
-}
-
-func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[int32]*entry, error) {
-	cols := make(map[string]map[int32]*entry)
-	rows, err := conn.Query(ctx, selectCollectionSizesSQL)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var size int
-		var col string
-
-		if err := rows.Scan(&size, &col); err != nil {
-			return nil, err
-		}
-		// Alter column key name to conform meta models
-		key := strings.TrimSuffix(col, "_t")
-
-		cols[key] = make(map[int32]*entry, size)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return cols, nil
 }
 
 func (db *Database) generateTableQueryMap(ctx context.Context, conn *pgx.Conn) (map[string]string, error) {
@@ -352,11 +291,6 @@ func (db *Database) fill(handler eventHandler) error {
 	}
 
 	return db.run(func(ctx context.Context, conn *pgx.Conn) error {
-		cols, err := preAllocCollections(ctx, conn)
-		if err != nil {
-			return err
-		}
-
 		queryMap, err := db.generateTableQueryMap(ctx, conn)
 		if err != nil {
 			return err
@@ -407,13 +341,6 @@ func (db *Database) fill(handler eventHandler) error {
 					continue
 				}
 
-				collection := cols[tablename]
-				if collection == nil {
-					log.Warnf("alloc collection %q. This should has happend before.\n", tablename)
-					collection = make(map[int32]*entry)
-					cols[tablename] = collection
-				}
-
 				// Handle Data
 				if err := handler(addedEvent, tablename, id, data); err != nil {
 					return err
@@ -433,8 +360,6 @@ func (db *Database) fill(handler eventHandler) error {
 			}
 		}
 
-		log.Debugf("num collections: %d\n", len(cols))
-		db.collections = cols
 		db.last = start
 		return nil
 	})
