@@ -42,7 +42,6 @@ type auRequest struct {
 }
 
 func (c *controller) autoupdateRequestFromFQIDs(answers map[string]search.Answer) []auRequest {
-	// TODO
 	collIdxMap := map[string]int{}
 	var req []auRequest
 	for fqid := range answers {

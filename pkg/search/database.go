@@ -59,14 +59,6 @@ FROM
 WHERE
 	id = $2
 `
-
-	/* TODO selectDiffSQL = `
-	SELECT
-	  fqid,
-	  CASE WHEN updated > $1 THEN data::text ELSE NULL END,
-	  updated
-	FROM models
-	WHERE NOT deleted`*/
 )
 
 type entry struct {
@@ -254,12 +246,10 @@ func (db *Database) update(handler eventHandler) error {
 						return err
 					}
 					collection[id] = &entry{
-						// TODO: updated: updated,
 						gen: ngen,
 					}
 					added++
 				} else {
-					// TODO: e.updated = updated
 					e.gen = ngen
 
 					if err := handler(changedEvent, tablename, id, data); err != nil {
