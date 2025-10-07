@@ -144,7 +144,7 @@ func (db *Database) update(handler eventHandler) error {
 
 		ngen := db.gen + 1 // may overflow but thats okay.
 
-		changeMap := make(map[string]updateOperation)
+		changeMap := make(map[string][]updateOperation)
 
 		// Convert each fqid to a tablename - id mapping
 		for updateLogs.Next() {
@@ -161,85 +161,92 @@ func (db *Database) update(handler eventHandler) error {
 				return err
 			}
 
-			changeMap[tableName] = updateOperation{
+			if changeMap[tableName] == nil {
+				changeMap[tableName] = []updateOperation{}
+			}
+
+			changeMap[tableName] = append(changeMap[tableName], updateOperation{
 				fmt.Sprint(elementId),
 				operation,
-			}
+			})
+			log.Infof("Change found %s and %s", fmt.Sprint(elementId), operation)
 		}
 
 		updateLogs.Close()
 
 		// For each tablename - id mapping, query the corresponding row for data and insert it update the search index
-		for tablename, updateOperation := range changeMap {
-			// Create SQL Query
-			constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
-			constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", updateOperation.fqid, -1)
+		for tablename, updateOperations := range changeMap {
+			for _, updateOperation := range updateOperations {
+				// Create SQL Query
+				constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
+				constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", updateOperation.fqid, -1)
 
-			log.Debugf("A change has been registered: %s with id %s", tablename+"_t", updateOperation.fqid)
+				log.Infof("A change has been registered: %s with id %s", tablename+"_t", updateOperation.fqid)
 
-			// Query
-			rows, err := conn.Query(ctx, constructedSQLStatement)
-			if err != nil {
-				return err
-			}
-			defer rows.Close()
-
-			// Get column names of table
-			descriptions := rows.FieldDescriptions()
-			columns := make([]string, len(descriptions))
-
-			for i, description := range descriptions {
-				columns[i] = description.Name
-			}
-
-			for rows.Next() {
-				values, err := rows.Values()
+				// Query
+				rows, err := conn.Query(ctx, constructedSQLStatement)
 				if err != nil {
 					return err
 				}
+				defer rows.Close()
 
-				// Assign data
-				data := make(map[string]any, len(values))
-				var id int32
-				id = -1
+				// Get column names of table
+				descriptions := rows.FieldDescriptions()
+				columns := make([]string, len(descriptions))
 
-				for i, v := range values {
-					if columns[i] == "id" {
-						id = v.(int32)
+				for i, description := range descriptions {
+					columns[i] = description.Name
+				}
+
+				for rows.Next() {
+					values, err := rows.Values()
+					if err != nil {
+						return err
+					}
+
+					// Assign data
+					data := make(map[string]any, len(values))
+					var id int32
+					id = -1
+
+					for i, v := range values {
+						if columns[i] == "id" {
+							id = v.(int32)
+							continue
+						}
+						data[columns[i]] = v
+					}
+
+					if id == -1 {
+						// Discard this table
+						log.Info(tablename + " discarded, for there is no id column found")
 						continue
 					}
-					data[columns[i]] = v
-				}
 
-				if id == -1 {
-					// Discard this table
-					log.Info(tablename + " discarded, for there is no id column found")
-					continue
-				}
+					entries++
 
-				entries++
+					// Act based on operation
+					switch updateOperation.operation {
+					case "insert":
+						if err := handler(addedEvent, tablename, id, data); err != nil {
+							return err
+						}
+						added++
+					case "update":
 
-				// Act based on operation
-				switch updateOperation.operation {
-				case "insert":
-					if err := handler(addedEvent, tablename, id, data); err != nil {
-						return err
-					}
-					added++
-				case "update":
-
-					if err := handler(changedEvent, tablename, id, data); err != nil {
-						return err
-					}
-				case "delete":
-					removed++
-					if err := handler(removeEvent, updateOperation.fqid, id, nil); err != nil {
-						return err
+						if err := handler(changedEvent, tablename, id, data); err != nil {
+							return err
+						}
+					case "delete":
+						removed++
+						if err := handler(removeEvent, updateOperation.fqid, id, nil); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			if err := rows.Err(); err != nil {
-				return err
+				if err := rows.Err(); err != nil {
+					return err
+				}
 			}
 		}
 

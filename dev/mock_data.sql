@@ -31,4 +31,6 @@ INSERT INTO poll_t (
 VALUES (2, 'Titel1', 'analog', 'fast', 'YNA', 'disabled', 1, 'topic/2', 2);
 SELECT nextval('poll_t_id_seq');
 
+INSERT INTO gender_t (id, name) VALUES (2, 'test');
+
 COMMIT;
