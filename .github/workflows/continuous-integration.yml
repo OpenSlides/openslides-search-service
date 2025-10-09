@@ -14,5 +14,26 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v5
 
-    - name: run tests
-      run: make run-tests
+    - name: Build test image
+      uses: make build-test
+
+    - name: Compose test containers
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml up -d"
+
+    - name: Wait for database
+      uses: until pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER"; do sleep 3; done
+
+    - name: Fill database with mock data
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml exec search bash create-models.sh"
+
+    - name: Go vet
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml exec search go vet ./...
+
+    - name: Go test
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml exec search go test -timeout 60s -race ./...
+
+    - name: Go fmt
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml exec search gofmt -l .
+
+    - name: Go lint
+      uses: eval "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml exec search golint -set_exit_status ./..."

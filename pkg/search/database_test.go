@@ -221,7 +221,7 @@ func TestRestrictedOutput(t *testing.T) {
 		},
 	}
 
-	t.Run("Check output of reestricted search queries", func(t *testing.T) {
+	t.Run("Check output of restricted search queries", func(t *testing.T) {
 		for _, output := range outputs {
 			address := fmt.Sprintf("%s%s", localSearchAddress, output.Query)
 			response, err := http.Get(address)
@@ -248,7 +248,7 @@ func TestRestrictedOutput(t *testing.T) {
 	})
 }
 
-/*
+/* Unsure if tests that change database state are good
 func TestDatabaseUpdate(t *testing.T) {
 	outputBeforeUdpate := OutputDataIndexQuery{
 
@@ -343,8 +343,7 @@ func TestDatabaseUpdate(t *testing.T) {
 			t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", outputAfterUdpate.OutputAnswers, answers)
 		}
 	})
-}
-*/
+}*/
 
 func debugPrintByteArrayAsInt(t *testing.T, a []byte) {
 	var s string
