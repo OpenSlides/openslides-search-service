@@ -30,11 +30,8 @@ COPY entrypoint.sh ./
 COPY meta/search.yml ./
 COPY meta/models.yml ./
 COPY meta ./meta
-COPY meta/dev/sql/base_data.sql ./base_data.sql
-COPY meta/dev/sql/schema_relational.sql ./schema_relational.sql
-COPY meta/dev/sql/test_data.sql ./test_data.sql
-COPY dev/mock_data.sql ./mock_data.sql
-COPY dev/create-models.sh ./create-models.sh
+COPY dev/mock_data.sql ./dev/mock_data.sql
+COPY dev/create-models.sh ./dev/create-models.sh
 
 
 ## Entrypoint

@@ -31,7 +31,7 @@ run-clean-psql-setup:
 	make -C .. dev-stop search compose-local-branch
 	make -C .. dev-detached search compose-local-branch
 	sleep 6
-	make -C .. dev-exec search EXEC_COMMAND="search bash create-models.sh true"
+	make -C .. dev-exec search EXEC_COMMAND="search bash ./dev/create-models.sh true"
 	sleep 6
 	make curl-search-string-default
 

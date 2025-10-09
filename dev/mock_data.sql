@@ -16,21 +16,3 @@ INSERT INTO agenda_item_t (content_object_id, meeting_id)
 VALUES ('topic/2', 2);
 COMMIT;
 
---rl:gr topic.poll_ids:poll.content_object_id
-INSERT INTO poll_t (
-    id,
-    title,
-    type,
-    backend,
-    pollmethod,
-    onehundred_percent_base,
-    sequential_number,
-    content_object_id,
-    meeting_id
-)
-VALUES (2, 'Titel1', 'analog', 'fast', 'YNA', 'disabled', 1, 'topic/2', 2);
-SELECT nextval('poll_t_id_seq');
-
-INSERT INTO gender_t (id, name) VALUES (2, 'test');
-
-COMMIT;
