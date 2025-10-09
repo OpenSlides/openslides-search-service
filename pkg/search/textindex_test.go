@@ -8,11 +8,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"testing"
@@ -36,6 +33,12 @@ type OutputDataIndexQuery struct {
 	OutputAnswers map[string]Answer
 }
 
+type testTextIndexController struct {
+	*TextIndex
+	*pgtest.PostgresTest
+	context.Context
+}
+
 type mockController struct {
 	cfg       *config.Config
 	auth      *auth.Auth
@@ -44,7 +47,7 @@ type mockController struct {
 	collRel   map[string]map[string]struct{}
 }
 
-func initIndex(t *testing.T) (*TextIndex, error) {
+func initIndex(t *testing.T) (*testTextIndexController, error) {
 	err := os.Setenv("RESTRICTER_URL", "...")
 
 	if err != nil {
@@ -78,12 +81,17 @@ func initIndex(t *testing.T) (*TextIndex, error) {
 	}
 
 	// Create test postgres container
+	closePG := true
 	pg, err := pgtest.NewPostgresTest(ctx)
 	if err != nil {
 		t.Errorf("Error starting postgres: %s", err)
 		return nil, err
 	}
-	defer pg.Close()
+	defer func() {
+		if closePG {
+			pg.Close()
+		}
+	}()
 
 	// Alter cfg to refer to test postgres container
 	cfg.Database.User = pg.Env["DATABASE_USER"]
@@ -108,7 +116,8 @@ func initIndex(t *testing.T) (*TextIndex, error) {
 		return nil, err
 	}
 
-	return ti, nil
+	closePG = false
+	return &testTextIndexController{ti, pg, ctx}, nil
 }
 
 func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, path string) error {
@@ -220,15 +229,16 @@ func TestUnrestrictedOutput(t *testing.T) {
 	}
 
 	// Setup text index & database
-	ti, err := initIndex(t)
+	ctrl, err := initIndex(t)
 
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
 	}
+	defer ctrl.PostgresTest.Close()
 
 	t.Run("Check output of unrestricted search queries", func(t *testing.T) {
 		for _, output := range outputs {
-			answers, err := ti.Search(output.WordQuery, output.Collections, 0)
+			answers, err := ctrl.TextIndex.Search(output.WordQuery, output.Collections, 0)
 
 			if err != nil {
 				t.Errorf("Error searching in text index: %s", err)
@@ -241,6 +251,7 @@ func TestUnrestrictedOutput(t *testing.T) {
 	})
 }
 
+/* This requires a running autoupdate service
 func TestRestrictedOutput(t *testing.T) {
 	outputs := []OutputDataHTMLQuery{
 		{
@@ -263,6 +274,13 @@ func TestRestrictedOutput(t *testing.T) {
 			"q=teams",
 			`{}`,
 		},
+	}
+
+	// Setup text index & database
+	ti, err := initIndex(t)
+
+	if err != nil {
+		t.Errorf("Couldn't init index %s", err)
 	}
 
 	t.Run("Check output of restricted search queries", func(t *testing.T) {
@@ -290,7 +308,7 @@ func TestRestrictedOutput(t *testing.T) {
 			}
 		}
 	})
-}
+}*/
 
 func TestDatabaseUpdate(t *testing.T) {
 	outputBeforeUdpate := OutputDataIndexQuery{
@@ -337,16 +355,23 @@ func TestDatabaseUpdate(t *testing.T) {
 	}
 
 	// Setup text index & database
-	ti, err := initIndex(t)
+	ctrl, err := initIndex(t)
 
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
 	}
+	defer ctrl.PostgresTest.Close()
 
-	// Fill it with mock data
+	// Update Textindex
+	ctrl.TextIndex.db.cfg.Index.Age = 0 // Force update
+	err = ctrl.TextIndex.update()
+
+	if err != nil {
+		t.Errorf("Error updating text index: %s", err)
+	}
 
 	t.Run("Check output before updating database", func(t *testing.T) {
-		answers, err := ti.Search(outputBeforeUdpate.WordQuery, outputBeforeUdpate.Collections, 0)
+		answers, err := ctrl.TextIndex.Search(outputBeforeUdpate.WordQuery, outputBeforeUdpate.Collections, 0)
 
 		if err != nil {
 			t.Errorf("Error searching in text index: %s", err)
@@ -359,14 +384,21 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 
 	// Update database
-	// conn.Exec(ctx, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'")
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'")
 
 	if err != nil {
-		t.Errorf("Error updating database: %s", err)
+		t.Errorf("Error updating postgres database: %s", err)
+	}
+
+	// Update Textindex
+	err = ctrl.TextIndex.update()
+
+	if err != nil {
+		t.Errorf("Error updating text index: %s", err)
 	}
 
 	t.Run("Check output after updating database", func(t *testing.T) {
-		answers, err := ti.Search(outputAfterUdpate.WordQuery, outputAfterUdpate.Collections, 0)
+		answers, err := ctrl.TextIndex.Search(outputAfterUdpate.WordQuery, outputAfterUdpate.Collections, 0)
 
 		if err != nil {
 			t.Errorf("Error searching in text index: %s", err)
@@ -376,6 +408,30 @@ func TestDatabaseUpdate(t *testing.T) {
 			t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", outputAfterUdpate.OutputAnswers, answers)
 		}
 	})
+}
+
+func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, cmd string) error {
+	conn, err := pg.Conn(ctx)
+
+	if err != nil {
+		t.Errorf("getting pgx connection for command %s: %s", cmd, err)
+		return err
+	}
+
+	_, err = conn.Begin(ctx)
+	if err != nil {
+		t.Errorf("starting pgx connection for command %s: %s", cmd, err)
+		return err
+	}
+	defer conn.Close(ctx)
+
+	_, err = conn.Exec(ctx, cmd)
+
+	if err != nil {
+		t.Errorf("adding mock data for command %s: %s", cmd, err)
+		return err
+	}
+	return nil
 }
 
 func debugPrintByteArrayAsInt(t *testing.T, a []byte) {
