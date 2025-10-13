@@ -144,6 +144,18 @@ func TestUnrestrictedOutput(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("Trying to get info that doesn't exist", func(t *testing.T) {
+		answers, err := ctrl.TextIndex.Search("qwertyuiop", []string{""}, 0)
+
+		if err != nil {
+			t.Errorf("Error searching in text index: %s", err)
+		}
+
+		if !compareAnswers(answers, map[string]Answer{}) {
+			t.Errorf("\nOutput of text index search for a non-existing object should be \n%v\nis\n%v", map[string]Answer{}, answers)
+		}
+	})
 }
 
 /* This requires a running autoupdate service
@@ -249,6 +261,33 @@ func TestDatabaseUpdate(t *testing.T) {
 		},
 	}
 
+	outputAfterAdd := OutputDataIndexQuery{
+		"test",
+		[]string{},
+		map[string]Answer{
+			"topic/2": {2.0287553566700622, map[string][]string{
+				"_title_original": {"test"},
+				"text":            {"test", "west"},
+				"title":           {"test"},
+			},
+			},
+			"topic/3": {0.04828040627900243, map[string][]string{
+				"_title_original": {"west"},
+				"text":            {"west"},
+				"title":           {"west"},
+			},
+			},
+			"meeting/2": {0.8690472848365689, map[string][]string{
+				"welcome_text": {"text", "test"},
+			},
+			},
+			"meeting/1": {0.014899656597235321, map[string][]string{
+				"welcome_text": {"text"},
+			},
+			},
+		},
+	}
+
 	// Setup text index & database
 	ctrl, err := initIndex(t)
 
@@ -278,7 +317,7 @@ func TestDatabaseUpdate(t *testing.T) {
 
 	})
 
-	// Update database
+	// Update database - change searchable object
 	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = 2", true)
 
 	if err != nil {
@@ -301,6 +340,75 @@ func TestDatabaseUpdate(t *testing.T) {
 
 		if !compareAnswers(answers, outputAfterUdpate.OutputAnswers) {
 			t.Errorf("\nOutput of unrestricted text index search should be \n%v\nis\n%v", outputAfterUdpate.OutputAnswers, answers)
+		}
+	})
+
+	// Update database - add new searchable object
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, `
+INSERT INTO topic_t (id, title, text, sequential_number, meeting_id)
+VALUES (3, 'West Land', 'A western', 2, 2);
+SELECT nextval('topic_t_id_seq');
+INSERT INTO list_of_speakers_t (
+    id, content_object_id, sequential_number, meeting_id
+)
+VALUES (3, 'topic/3', 2, 2);
+INSERT INTO agenda_item_t (content_object_id, meeting_id)
+VALUES ('topic/3', 2);`, true)
+
+	if err != nil {
+		t.Errorf("Error updating postgres database: %s", err)
+	}
+
+	// Update Textindex
+	err = ctrl.TextIndex.update()
+
+	if err != nil {
+		t.Errorf("Error updating text index: %s", err)
+	}
+
+	t.Run("Check output after updating database", func(t *testing.T) {
+		answers, err := ctrl.TextIndex.Search(outputAfterAdd.WordQuery, outputAfterAdd.Collections, 0)
+
+		if err != nil {
+			t.Errorf("Error searching in text index: %s", err)
+		}
+
+		if !compareAnswers(answers, outputAfterAdd.OutputAnswers) {
+			t.Errorf("\nOutput of text index search after newly added object to database should be \n%v\nis\n%v", outputAfterAdd.OutputAnswers, answers)
+		}
+	})
+
+	// Update database - delete searchable object
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, `
+DELETE FROM agenda_item_t WHERE content_object_id = 'topic/3';
+DELETE FROM list_of_speakers_t WHERE id = 3;
+DELETE FROM topic_t WHERE id = 3;
+		`, true)
+
+	if err != nil {
+		t.Errorf("Error updating postgres database: %s", err)
+	}
+
+	// Update Textindex
+	err = ctrl.TextIndex.update()
+
+	if err != nil {
+		t.Errorf("Error updating text index: %s", err)
+	}
+
+	pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT * FROM os_notify_log_t", false)
+
+	pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT id FROM meeting_t", false)
+
+	t.Run("Check output after added object has been deleted again from database", func(t *testing.T) {
+		answers, err := ctrl.TextIndex.Search(outputAfterUdpate.WordQuery, outputAfterUdpate.Collections, 0)
+
+		if err != nil {
+			t.Errorf("Error searching in text index: %s", err)
+		}
+
+		if !compareAnswers(answers, outputAfterUdpate.OutputAnswers) {
+			t.Errorf("\nOutput of text index search after deleting newly added object should be \n%v\nis\n%v", outputAfterUdpate.OutputAnswers, answers)
 		}
 	})
 }
@@ -458,6 +566,7 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 			columns[i] = description.Name
 		}
 
+		var ticker int
 		for rows.Next() {
 			values, err := rows.Values()
 			if err != nil {
@@ -466,22 +575,16 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 
 			// Assign data
 			data := make(map[string]any, len(values))
+			log.Infof("New Row %d", ticker)
+			ticker += 1
 
 			for i, v := range values {
 				data[columns[i]] = v
-				log.Infof("Row %d has value %s for column %s", i, columns[i], data[columns[i]])
+				log.Infof("Column #%d - %s has value %v", i, columns[i], data[columns[i]])
 			}
 		}
 	}
 	return nil
-}
-
-func debugPrintByteArrayAsInt(t *testing.T, a []byte) {
-	var s string
-	for _, x := range a {
-		s += fmt.Sprint(int(x))
-	}
-	t.Log(s)
 }
 
 func sortByteArray(a []byte) []byte {
@@ -521,4 +624,25 @@ func convertAnswerMapToByteArray(a map[string]Answer) []byte {
 		// byteA = append(byteA, []byte(fmt.Sprint(answer.Score))...)
 	}
 	return byteA
+}
+
+func debugPrintByteArrayAsInt(t *testing.T, a []byte) {
+	var s string
+	for _, x := range a {
+		s += fmt.Sprint(int(x))
+	}
+	t.Log(s)
+}
+
+func debugFindLocationOfDifference(a, b []byte) {
+	log.Info("Comparing")
+	log.Info(string(a))
+	log.Info(string(b))
+	for i, v := range a {
+		if len(b) <= i {
+			log.Infof("B is too short, missing %d at the end", v)
+		} else if b[i] != a[i] {
+			log.Infof("Pos %d character is %d for a and %d for b", i, v, b[i])
+		}
+	}
 }
