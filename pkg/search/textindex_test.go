@@ -18,6 +18,7 @@ import (
 	"github.com/OpenSlides/openslides-go/datastore/pgtest"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/OpenSlides/openslides-search-service/pkg/meta"
+	log "github.com/sirupsen/logrus"
 )
 
 const localSearchAddress = "http://localhost:9050/system/search?"
@@ -45,112 +46,6 @@ type mockController struct {
 	qs        *QueryServer
 	reqFields map[string]map[string]*meta.CollectionRelation
 	collRel   map[string]map[string]struct{}
-}
-
-func initIndex(t *testing.T) (*testTextIndexController, error) {
-	err := os.Setenv("RESTRICTER_URL", "...")
-
-	if err != nil {
-		t.Errorf("Error setting environment variable: %s", err)
-		return nil, err
-	}
-
-	cfg, _ := config.GetConfig()
-
-	ctx := t.Context()
-
-	models, err := meta.Fetch[meta.Collections]("../../meta/models.yml")
-	if err != nil {
-		t.Errorf("loading models failed: %s", err)
-		return nil, err
-	}
-
-	// For text indexing we can only use string fields.
-	searchModels := models.Clone()
-
-	// If there are search filters configured cut search models further down.
-	if cfg.Models.Search != "" {
-		searchFilter, err := meta.Fetch[meta.Filters]("../../meta/search.yml")
-		if err != nil {
-			t.Errorf("loading search filters failed. %s", err)
-			return nil, err
-		}
-		searchModels.Retain(searchFilter.Retain(false))
-	} else {
-		searchModels.Retain(meta.RetainStrings())
-	}
-
-	// Create test postgres container
-	closePG := true
-	pg, err := pgtest.NewPostgresTest(ctx)
-	if err != nil {
-		t.Errorf("Error starting postgres: %s", err)
-		return nil, err
-	}
-	defer func() {
-		if closePG {
-			pg.Close()
-		}
-	}()
-
-	// Alter cfg to refer to test postgres container
-	cfg.Database.User = pg.Env["DATABASE_USER"]
-	cfg.Database.Database = pg.Env["DATABASE_NAME"]
-	cfg.Database.Host = pg.Env["DATABASE_HOST"]
-	cfg.Database.Port, err = strconv.Atoi(pg.Env["DATABASE_PORT"])
-
-	if err != nil {
-		t.Errorf("converting test postgres post to int: %s", err)
-		return nil, err
-	}
-
-	// Add mock data
-	sqlFromFile(t, ctx, pg, "../../meta/dev/sql/test_data.sql")
-	sqlFromFile(t, ctx, pg, "../../dev/mock_data.sql")
-
-	// Create database and text index
-	db := NewDatabase(cfg)
-	ti, err := NewTextIndex(cfg, db, searchModels)
-	if err != nil {
-		t.Errorf("creating text index failed: %s", err)
-		return nil, err
-	}
-
-	closePG = false
-	return &testTextIndexController{ti, pg, ctx}, nil
-}
-
-func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, path string) error {
-
-	// Read sql content
-	file, err := os.ReadFile(path)
-	if err != nil {
-		t.Errorf("reading sql file for path %s: %s", path, err)
-		return err
-	}
-
-	conn, err := pg.Conn(ctx)
-
-	if err != nil {
-		t.Errorf("getting pgx connection for path %s: %s", path, err)
-		return err
-	}
-
-	_, err = conn.Begin(ctx)
-	if err != nil {
-		t.Errorf("starting pgx connection for path %s: %s", path, err)
-		return err
-	}
-	defer conn.Close(ctx)
-
-	_, err = conn.Exec(ctx, string(file))
-
-	if err != nil {
-		t.Errorf("adding mock data for path %s: %s", path, err)
-		return err
-	}
-
-	return nil
 }
 
 func TestUnrestrictedOutput(t *testing.T) {
@@ -384,7 +279,13 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 
 	// Update database
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'")
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'", true)
+
+	if err != nil {
+		t.Errorf("Error updating postgres database: %s", err)
+	}
+
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT id,welcome_text FROM meeting_t;", false)
 
 	if err != nil {
 		t.Errorf("Error updating postgres database: %s", err)
@@ -410,7 +311,113 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 }
 
-func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, cmd string) error {
+func initIndex(t *testing.T) (*testTextIndexController, error) {
+	err := os.Setenv("RESTRICTER_URL", "...")
+
+	if err != nil {
+		t.Errorf("Error setting environment variable: %s", err)
+		return nil, err
+	}
+
+	cfg, _ := config.GetConfig()
+
+	ctx := t.Context()
+
+	models, err := meta.Fetch[meta.Collections]("../../meta/models.yml")
+	if err != nil {
+		t.Errorf("loading models failed: %s", err)
+		return nil, err
+	}
+
+	// For text indexing we can only use string fields.
+	searchModels := models.Clone()
+
+	// If there are search filters configured cut search models further down.
+	if cfg.Models.Search != "" {
+		searchFilter, err := meta.Fetch[meta.Filters]("../../meta/search.yml")
+		if err != nil {
+			t.Errorf("loading search filters failed. %s", err)
+			return nil, err
+		}
+		searchModels.Retain(searchFilter.Retain(false))
+	} else {
+		searchModels.Retain(meta.RetainStrings())
+	}
+
+	// Create test postgres container
+	closePG := true
+	pg, err := pgtest.NewPostgresTest(ctx)
+	if err != nil {
+		t.Errorf("Error starting postgres: %s", err)
+		return nil, err
+	}
+	defer func() {
+		if closePG {
+			pg.Close()
+		}
+	}()
+
+	// Alter cfg to refer to test postgres container
+	cfg.Database.User = pg.Env["DATABASE_USER"]
+	cfg.Database.Database = pg.Env["DATABASE_NAME"]
+	cfg.Database.Host = pg.Env["DATABASE_HOST"]
+	cfg.Database.Port, err = strconv.Atoi(pg.Env["DATABASE_PORT"])
+
+	if err != nil {
+		t.Errorf("converting test postgres post to int: %s", err)
+		return nil, err
+	}
+
+	// Add mock data
+	sqlFromFile(t, ctx, pg, "../../meta/dev/sql/test_data.sql")
+	sqlFromFile(t, ctx, pg, "../../dev/mock_data.sql")
+
+	// Create database and text index
+	db := NewDatabase(cfg)
+	ti, err := NewTextIndex(cfg, db, searchModels)
+	if err != nil {
+		t.Errorf("creating text index failed: %s", err)
+		return nil, err
+	}
+
+	closePG = false
+	return &testTextIndexController{ti, pg, ctx}, nil
+}
+
+func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, path string) error {
+
+	// Read sql content
+	file, err := os.ReadFile(path)
+	if err != nil {
+		t.Errorf("reading sql file for path %s: %s", path, err)
+		return err
+	}
+
+	conn, err := pg.Conn(ctx)
+
+	if err != nil {
+		t.Errorf("getting pgx connection for path %s: %s", path, err)
+		return err
+	}
+
+	_, err = conn.Begin(ctx)
+	if err != nil {
+		t.Errorf("starting pgx connection for path %s: %s", path, err)
+		return err
+	}
+	defer conn.Close(ctx)
+
+	_, err = conn.Exec(ctx, string(file))
+
+	if err != nil {
+		t.Errorf("adding mock data for path %s: %s", path, err)
+		return err
+	}
+
+	return nil
+}
+
+func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, cmd string, execMode bool) error {
 	conn, err := pg.Conn(ctx)
 
 	if err != nil {
@@ -425,11 +432,47 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 	}
 	defer conn.Close(ctx)
 
-	_, err = conn.Exec(ctx, cmd)
+	if execMode {
+		tag, err := conn.Exec(ctx, cmd)
 
-	if err != nil {
-		t.Errorf("adding mock data for command %s: %s", cmd, err)
-		return err
+		if err != nil {
+			t.Errorf("adding mock data for command %s: %s", cmd, err)
+			return err
+		}
+		log.Info(tag)
+	} else {
+		rows, err := conn.Query(ctx, cmd)
+
+		if err != nil {
+			t.Errorf("adding mock data for command %s: %s", cmd, err)
+			return err
+		}
+		defer rows.Close()
+
+		// Get column names of table
+		descriptions := rows.FieldDescriptions()
+		columns := make([]string, len(descriptions))
+
+		for i, description := range descriptions {
+			columns[i] = description.Name
+		}
+
+		for rows.Next() {
+			values, err := rows.Values()
+			if err != nil {
+				return err
+			}
+
+			// Assign data
+			data := make(map[string]any, len(values))
+
+			for i, v := range values {
+				data[columns[i]] = v
+				log.Info(columns[i])
+				log.Info(data[columns[i]])
+				log.Info(".....")
+			}
+		}
 	}
 	return nil
 }
