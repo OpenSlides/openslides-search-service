@@ -258,13 +258,14 @@ func (ti *TextIndex) update() error {
 
 	if err := ti.db.update(func(
 		evt updateEventType,
-		col string, fqid string, data map[string]any,
+		col string, id int, data map[string]any,
 	) error {
 		// we dont care if its not an indexed type.
 		mcol := ti.collections[col]
 		if mcol == nil {
 			return nil
 		}
+		fqid := col + "/" + strconv.Itoa(id)
 		switch evt {
 		case addedEvent:
 			bt := newBleveType(col)
@@ -327,13 +328,14 @@ func (ti *TextIndex) build() error {
 
 	batch, batchCount := index.NewBatch(), 0
 
-	if err := ti.db.fill(func(_ updateEventType, col string, fqid string, data map[string]any) error {
+	if err := ti.db.fill(func(_ updateEventType, col string, id int, data map[string]any) error {
 		// Dont care for collections which are not text indexed.
 
 		mcol := ti.collections[col]
 		if mcol == nil {
 			return nil
 		}
+		fqid := col + "/" + strconv.Itoa(id)
 
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)

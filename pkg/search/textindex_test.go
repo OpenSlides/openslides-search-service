@@ -232,17 +232,17 @@ func TestDatabaseUpdate(t *testing.T) {
 		"test",
 		[]string{},
 		map[string]Answer{
-			"topic/2": {2.4873344398209953, map[string][]string{
+			"topic/2": {1.8763260236206487, map[string][]string{
 				"_title_original": {"test"},
 				"text":            {"test", "west"},
 				"title":           {"test"},
 			},
 			},
-			"meeting/2": {0.013346666139263209, map[string][]string{
-				"welcome_text": {"text test"},
+			"meeting/2": {0.7814626926547352, map[string][]string{
+				"welcome_text": {"text", "test"},
 			},
 			},
-			"meeting/1": {0.013346666139263209, map[string][]string{
+			"meeting/1": {0.013398034798872952, map[string][]string{
 				"welcome_text": {"text"},
 			},
 			},
@@ -279,13 +279,7 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 
 	// Update database
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = '2'", true)
-
-	if err != nil {
-		t.Errorf("Error updating postgres database: %s", err)
-	}
-
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT id,welcome_text FROM meeting_t;", false)
+	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = 2", true)
 
 	if err != nil {
 		t.Errorf("Error updating postgres database: %s", err)
@@ -425,7 +419,7 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 		return err
 	}
 
-	_, err = conn.Begin(ctx)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		t.Errorf("starting pgx connection for command %s: %s", cmd, err)
 		return err
@@ -433,15 +427,22 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 	defer conn.Close(ctx)
 
 	if execMode {
-		tag, err := conn.Exec(ctx, cmd)
+		_, err := tx.Exec(ctx, cmd)
 
 		if err != nil {
 			t.Errorf("adding mock data for command %s: %s", cmd, err)
 			return err
 		}
-		log.Info(tag)
+
+		err = tx.Commit(ctx)
+
+		if err != nil {
+			t.Errorf("adding mock data for command %s: %s", cmd, err)
+			return err
+		}
 	} else {
-		rows, err := conn.Query(ctx, cmd)
+		// Query command for debugging purposes
+		rows, err := tx.Query(ctx, cmd)
 
 		if err != nil {
 			t.Errorf("adding mock data for command %s: %s", cmd, err)
@@ -468,9 +469,7 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 
 			for i, v := range values {
 				data[columns[i]] = v
-				log.Info(columns[i])
-				log.Info(data[columns[i]])
-				log.Info(".....")
+				log.Infof("Row %d has value %s for column %s", i, columns[i], data[columns[i]])
 			}
 		}
 	}
