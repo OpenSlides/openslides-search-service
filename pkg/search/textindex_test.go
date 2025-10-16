@@ -396,10 +396,6 @@ DELETE FROM topic_t WHERE id = 3;
 		t.Errorf("Error updating text index: %s", err)
 	}
 
-	pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT * FROM os_notify_log_t", false)
-
-	pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "SELECT id FROM meeting_t", false)
-
 	t.Run("Check output after added object has been deleted again from database", func(t *testing.T) {
 		answers, err := ctrl.TextIndex.Search(outputAfterUdpate.WordQuery, outputAfterUdpate.Collections, 0)
 

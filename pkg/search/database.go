@@ -42,7 +42,7 @@ FROM
 	os_notify_log_t
 WHERE
 	timestamp >= $1
-ORDER BY fqid, timestamp DESC
+ORDER BY fqid, id DESC
 	`
 
 	selectElementFromTableTemplate = `
