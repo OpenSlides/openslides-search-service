@@ -1,0 +1,105 @@
+services:
+    search:
+        build:
+            context: ..
+            target: "${CONTEXT}"
+            args:
+                CONTEXT: "${CONTEXT}"
+        image: openslides-search-${CONTEXT}
+        ports:
+            - "9050:9050"
+        volumes:
+            - ../pkg:/app/openslides-search-service/pkg
+            - ../cmd:/app/openslides-search-service/cmd
+        environment:
+            - AUTH_HOST=auth
+            - AUTH_PORT=9004
+            - MESSAGE_BUS_HOST=redis
+            - CACHE_HOST=redis
+            - CACHE_PORT=6379
+            - DATABASE_HOST=postgres
+            - DATABASE_PORT=5432
+            - DATABASE_NAME=openslides
+            - DATABASE_USER=openslides
+            - PGPASSWORD=openslides
+            - OPENSLIDES_DEVELOPMENT=1
+        depends_on:
+            - auth
+    autoupdate:
+        build:
+            context: "https://github.com/OpenSlides/openslides-autoupdate-service.git#${COMPOSE_REFERENCE_BRANCH:-main}"
+            target: "dev"
+            args:
+                CONTEXT: "dev"
+        depends_on:
+            - postgres
+            - redis
+        environment:
+            - ACTION_HOST=search
+            - ACTION_PORT=9005
+            - MESSAGE_BUS_HOST=redis
+            - MESSAGE_BUS_PORT=6379
+            - AUTH_HOST=auth
+            - AUTH_PORT=9004
+            - CACHE_HOST=redis
+            - CACHE_PORT=6379
+            - DATABASE_HOST=postgres
+            - DATABASE_PORT=5432
+            - DATABASE_NAME=openslides
+            - DATABASE_USER=openslides
+            - OPENSLIDES_DEVELOPMENT=1
+    auth:
+        build:
+            context: "https://github.com/OpenSlides/openslides-auth-service.git#${COMPOSE_REFERENCE_BRANCH:-main}"
+            target: "dev"
+            args:
+                CONTEXT: "dev"
+        image: openslides-auth-dev-${COMPOSE_REFERENCE_BRANCH:-main}
+        ports:
+            - "9004:9004"
+        environment:
+            - ACTION_HOST=search
+            - ACTION_PORT=9005
+            - MESSAGE_BUS_HOST=redis
+            - MESSAGE_BUS_PORT=6379
+            - AUTH_HOST=auth
+            - AUTH_PORT=9004
+            - CACHE_HOST=redis
+            - CACHE_PORT=6379
+            - DATABASE_HOST=postgres
+            - DATABASE_PORT=5432
+            - DATABASE_NAME=openslides
+            - DATABASE_USER=openslides
+            - OPENSLIDES_DEVELOPMENT=1
+        depends_on:
+            - redis
+            - postgres
+    models:
+        build:
+            context: ../meta/dev
+        image: openslides-search-models
+        volumes:
+            - ../meta/dev:/app/dev
+        depends_on:
+            - postgres
+        environment:
+           - DATABASE_HOST=postgres
+           - DATABASE_PORT=5432
+           - DATABASE_USER=openslides
+           - DATABASE_NAME=openslides
+           - PGPASSWORD=openslides
+           - POSTGRES_PASSWORD=openslides
+    postgres:
+        image: postgres:15
+        command: ["postgres", "-c", "log_statement=all"]
+        environment:
+            - POSTGRES_USER=openslides
+            - POSTGRES_PASSWORD=openslides
+            - POSTGRES_DB=openslides
+            - PGPASSWORD=openslides
+        ports:
+            - "5432:5432"
+    redis:
+        image: redis:alpine
+        ports:
+            - "6379:6379"

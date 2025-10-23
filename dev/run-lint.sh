@@ -20,8 +20,13 @@ CONTAINER_NAME="search-tests"
 IMAGE_TAG=openslides-search-tests
 DOCKER_EXEC="docker exec ${CONTAINER_NAME}"
 
+# Helpers
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+DC="CONTEXT=tests USER_ID=$USER_ID GROUP_ID=$GROUP_ID COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml"
+
 # Safe Exit
-trap 'if [ -z "$LOCAL" ] && [ -z "$SKIP_SETUP" ]; then docker stop $CONTAINER_NAME &> /dev/null && docker rm $CONTAINER_NAME &> /dev/null; fi' EXIT
+trap 'if [ -z "$LOCAL" ] && [ -z "$SKIP_SETUP" ]; then eval "$DC down --volumes"; fi' EXIT
 
 # Execution
 if [ -z "$LOCAL" ]
@@ -30,13 +35,13 @@ then
     if [ -z "$SKIP_SETUP" ]
     then
         make build-tests >/dev/null 2>&1
-        docker run -d --name "${CONTAINER_NAME}" "${IMAGE_TAG}"
+        eval "$DC up -d"
     fi
 
     # Container Mode
-    eval "$DOCKER_EXEC go vet ./..."
-    eval "$DOCKER_EXEC golint -set_exit_status ./..."
-    eval "$DOCKER_EXEC gofmt -l ."
+    eval "$DC exec search go vet ./..."
+    eval "$DC exec search golint -set_exit_status ./..."
+    eval "$DC exec search gofmt -l ."
 else
     # Local Mode
     go vet ./...
