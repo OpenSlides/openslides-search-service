@@ -18,7 +18,7 @@ import (
 const (
 	DefaultWebPort        = 9050
 	DefaultWebHost        = ""
-	DefaultMaxQueue       = 5
+	DefaultMaxQueue       = 20
 	DefaultIndexAge       = 100 * time.Millisecond
 	DefaultIndexFile      = "search.bleve"
 	DefaultIndexUpdate    = 2 * time.Minute
@@ -86,8 +86,9 @@ func GetConfig() (*Config, error) {
 	cfg := &Config{
 		LogLevel: logrus.InfoLevel,
 		Web: Web{
-			Port: DefaultWebPort,
-			Host: DefaultWebHost,
+			Port:     DefaultWebPort,
+			Host:     DefaultWebHost,
+			MaxQueue: DefaultMaxQueue,
 		},
 		Index: Index{
 			File:   DefaultIndexFile,
