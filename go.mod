@@ -5,7 +5,6 @@ go 1.25.0
 require (
 	github.com/OpenSlides/openslides-go v0.0.0-20251005065212-fcd0e56128ff
 	github.com/blevesearch/bleve/v2 v2.5.4
-	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.18.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/sirupsen/logrus v1.9.3
