@@ -219,7 +219,11 @@ func (db *Database) update(handler eventHandler) error {
 
 					for i, v := range values {
 						if columns[i] == "id" {
-							id = v.(int32)
+							if val, ok := v.(int32); ok {
+								id = val
+							} else {
+								return fmt.Errorf("%v is not an int32", v)
+							}
 							continue
 						}
 						data[columns[i]] = v
@@ -338,7 +342,11 @@ func (db *Database) fill(handler eventHandler) error {
 
 				for i, v := range values {
 					if columns[i] == "id" {
-						id = v.(int32)
+						if val, ok := v.(int32); ok {
+							id = val
+						} else {
+							return fmt.Errorf("%v is not an int32", v)
+						}
 						continue
 					}
 					data[columns[i]] = v
