@@ -1,7 +1,5 @@
 #!/bin/sh
 
-CATCH=0
-
 # Run Linters & Tests
 go vet ./...
 go test -timeout 60s -race ./...

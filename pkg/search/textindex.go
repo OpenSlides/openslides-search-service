@@ -468,6 +468,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	if err != nil {
 		return nil, err
 	}
+
 	log.Infof("number hits: %d\n", len(result.Hits))
 	dupes := map[string]struct{}{}
 	answers := make(map[string]Answer, len(result.Hits))

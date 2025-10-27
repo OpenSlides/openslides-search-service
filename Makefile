@@ -41,9 +41,6 @@ curl-search-string-default:
 	make curl-search-string Q=test C=topic
 	make -C .. dev-log search compose-local-branch
 
-log:
-	make -C .. dev-log search compose-local-branch
-
 ########################## Deprecation List ##########################
 
 deprecation-warning:

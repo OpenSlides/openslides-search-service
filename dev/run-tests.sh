@@ -39,7 +39,13 @@ if [ -z "$SKIP_BUILD" ]; then make build-tests &> /dev/null; fi
 eval "$DC up -d"
 
 ## Setup database
-sleep 6
+if [ -z "$SKIP_WAIT_FOR_PSQL" ]
+then
+  until pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER"; do
+    echo "Waiting for Postgres server '$DATABASE_HOST' to become available..."
+    sleep 3
+  done
+fi
 eval "$DC exec search bash dev/create-models.sh"
 
 ## Execute tests

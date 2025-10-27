@@ -58,7 +58,7 @@ CMD ["sleep", "inf"]
 
 # Production Image
 FROM base AS builder
-RUN go build -o openslides-search-service cmd/searchd/main.go
+RUN go build -o openslides-search-service ./cmd/searchd/main.go
 
 FROM alpine:3 AS prod
 

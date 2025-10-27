@@ -2,9 +2,6 @@ name: CI - Build and Test Service
 
 on: [pull_request]
 
-env:
-  DC: "CONTEXT=tests USER_ID=1000 GROUP_ID=1000 COMPOSE_REFERENCE_BRANCH=${{ github.ref_name }} docker compose -f ./dev/docker-compose.dev.yml"
-
 jobs:
   continuous-tests:
     name: Test
