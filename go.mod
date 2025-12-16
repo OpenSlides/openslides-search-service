@@ -6,7 +6,7 @@ require (
 	github.com/OpenSlides/openslides-go v0.0.0-20251216103525-3a257aeab5f5
 	github.com/blevesearch/bleve/v2 v2.5.4
 	github.com/buger/jsonparser v1.1.1
-	github.com/goccy/go-yaml v1.18.0
+	github.com/goccy/go-yaml v1.19.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.38.0
