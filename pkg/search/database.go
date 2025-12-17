@@ -7,52 +7,64 @@ package search
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/jackc/pgx/v5"
 )
 
 const (
-	selectCollectionSizesSQL = `
+	selectAllTableNames = `
 SELECT
-  count(*),
-  left(fqid, position('/' IN fqid)-1) coll
-FROM models
-WHERE NOT deleted
-GROUP BY coll`
+	tablename
+FROM
+	pg_tables
+WHERE
+	schemaname = 'public'
+`
 
-	selectAllSQL = `
+	selectTableContentTemplate = `
 SELECT
-  fqid,
-  data::text,
-  updated
-FROM models
-WHERE NOT deleted`
+	*
+FROM
+	$1
+`
 
-	selectDiffSQL = `
+	selectLatestUpdates = `
+SELECT DISTINCT ON (fqid)
+	fqid,
+	operation
+FROM
+	os_notify_log_t
+WHERE
+	timestamp >= $1
+ORDER BY fqid, id DESC
+	`
+
+	selectElementFromTableTemplate = `
 SELECT
-  fqid,
-  CASE WHEN updated > $1 THEN data::text ELSE NULL END,
-  updated
-FROM models
-WHERE NOT deleted`
+	*
+FROM
+	$1
+WHERE
+	id = $2
+`
 )
 
-type entry struct {
-	updated time.Time
-	gen     uint16
+type updateOperation struct {
+	id        int
+	operation string
 }
 
 // Database manages the updates needed to drive the text index.
 type Database struct {
-	cfg         *config.Config
-	last        time.Time
-	gen         uint16
-	collections map[string]map[int]*entry
+	cfg  *config.Config
+	last time.Time
+	gen  uint16
 }
 
 // NewDatabase creates a new database,
@@ -80,17 +92,6 @@ func (db *Database) run(fn func(context.Context, *pgx.Conn) error) error {
 	return fn(ctx, con)
 }
 
-func (db *Database) numEntries() int {
-	if db.collections == nil {
-		return 0
-	}
-	var sum int
-	for _, col := range db.collections {
-		sum += len(col)
-	}
-	return sum
-}
-
 func splitFqid(fqid string) (string, int, error) {
 	col, idS, ok := strings.Cut(fqid, "/")
 	if !ok {
@@ -111,9 +112,9 @@ const (
 	removeEvent
 )
 
-type eventHandler func(evtType updateEventType, collection string, id int, data []byte) error
+type eventHandler func(evtType updateEventType, collection string, id int, data map[string]any) error
 
-func nullEventHandler(updateEventType, string, int, []byte) error { return nil }
+func nullEventHandler(updateEventType, string, int, map[string]any) error { return nil }
 
 func (db *Database) update(handler eventHandler) error {
 	start := time.Now()
@@ -130,87 +131,136 @@ func (db *Database) update(handler eventHandler) error {
 	defer func() {
 		log.Debugf("updating database took %v\n", time.Since(start))
 	}()
+
 	return db.run(func(ctx context.Context, conn *pgx.Conn) error {
-		rows, err := conn.Query(ctx, selectDiffSQL, db.last)
+
+		updateLogs, err := conn.Query(ctx, selectLatestUpdates, db.last)
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
+		defer updateLogs.Close()
 
-		before := db.numEntries()
-		var unchanged, added, entries int
+		var added, removed, entries int
 
 		ngen := db.gen + 1 // may overflow but thats okay.
 
-		for rows.Next() {
-			var (
-				fqid    string
-				data    []byte
-				updated time.Time
-			)
-			if err := rows.Scan(&fqid, &data, &updated); err != nil {
+		changeMap := make(map[string][]updateOperation)
+
+		// Convert each fqid to a tablename - id mapping
+		for updateLogs.Next() {
+			var fqid string
+			var operation string
+			err = updateLogs.Scan(&fqid, &operation)
+			if err != nil {
 				return err
 			}
-			entries++
-			col, id, err := splitFqid(fqid)
+
+			tableName, id, err := splitFqid(fqid)
+
 			if err != nil {
-				log.Errorf("error: %v\n", err)
-				continue
+				return err
 			}
-			// handle changed and new
-			collection := db.collections[col]
-			if collection == nil {
-				collection = make(map[int]*entry)
-				db.collections[col] = collection
+
+			if changeMap[tableName] == nil {
+				changeMap[tableName] = []updateOperation{}
 			}
-			e := collection[id]
-			if e == nil {
-				if err := handler(addedEvent, col, id, data); err != nil {
-					return err
-				}
-				collection[id] = &entry{
-					updated: updated,
-					gen:     ngen,
-				}
-				added++
-			} else {
-				e.updated = updated
-				e.gen = ngen
-				if data != nil {
-					if err := handler(changedEvent, col, id, data); err != nil {
-						return err
-					}
-				} else {
-					unchanged++
-				}
-			}
-		}
-		if err := rows.Err(); err != nil {
-			return err
+
+			changeMap[tableName] = append(changeMap[tableName], updateOperation{
+				id,
+				operation,
+			})
 		}
 
-		// TODO: Do some clever arithmetics based on
-		// before, entries, added and unchanged to
-		// early stop this.
-		var removed int
-		if unchanged != before {
-			for k, col := range db.collections {
-				for id, e := range col {
-					if e.gen != ngen {
-						removed++
-						delete(col, id)
-						if err := handler(removeEvent, k, id, nil); err != nil {
+		updateLogs.Close()
+
+		// For each tablename - id mapping, query the corresponding row for data and insert it update the search index
+		for tablename, updateOperations := range changeMap {
+			for _, updateOperation := range updateOperations {
+				// Create SQL Query
+				constructedSQLStatement := strings.Replace(selectElementFromTableTemplate, "$1", tablename+"_t", -1)
+				constructedSQLStatement = strings.Replace(constructedSQLStatement, "$2", fmt.Sprint(updateOperation.id), -1)
+
+				// log.Infof("A change has been registered: %s with id %d and operation %s", tablename+"_t", updateOperation.id, updateOperation.operation)
+
+				// Skip data collection if it was a delete event
+				if updateOperation.operation == "delete" {
+					removed++
+					if err := handler(removeEvent, tablename, updateOperation.id, nil); err != nil {
+						return err
+					}
+					continue
+				}
+
+				// Query
+				rows, err := conn.Query(ctx, constructedSQLStatement)
+				if err != nil {
+					return err
+				}
+				defer rows.Close()
+
+				// Get column names of table
+				descriptions := rows.FieldDescriptions()
+				columns := make([]string, len(descriptions))
+
+				for i, description := range descriptions {
+					columns[i] = description.Name
+				}
+
+				for rows.Next() {
+					values, err := rows.Values()
+					if err != nil {
+						return err
+					}
+
+					// Assign data
+					data := make(map[string]any, len(values))
+					var id int32
+					id = -1
+
+					for i, v := range values {
+						if columns[i] == "id" {
+							if val, ok := v.(int32); ok {
+								id = val
+							} else {
+								return fmt.Errorf("%v is not an int32", v)
+							}
+							continue
+						}
+						data[columns[i]] = v
+					}
+
+					if id == -1 {
+						// Discard this table
+						log.Info(tablename + " discarded, for there is no id column found")
+						continue
+					}
+
+					entries++
+
+					// Act based on operation
+					switch updateOperation.operation {
+					case "insert":
+						if err := handler(addedEvent, tablename, updateOperation.id, data); err != nil {
+							return err
+						}
+						added++
+					case "update":
+
+						if err := handler(changedEvent, tablename, updateOperation.id, data); err != nil {
 							return err
 						}
 					}
 				}
+				if err := rows.Err(); err != nil {
+					return err
+				}
 			}
 		}
 
-		log.Debugf("entries: %d / before: %d\n",
-			entries, before)
-		log.Debugf("unchanged: %d / added: %d / removed: %d\n",
-			unchanged, added, removed)
+		log.Debugf("entries: %d",
+			entries)
+		log.Debugf("added: %d / removed: %d\n",
+			added, removed)
 
 		db.last = start
 		db.gen = ngen
@@ -218,25 +268,30 @@ func (db *Database) update(handler eventHandler) error {
 	})
 }
 
-func preAllocCollections(ctx context.Context, conn *pgx.Conn) (map[string]map[int]*entry, error) {
-	cols := make(map[string]map[int]*entry)
-	rows, err := conn.Query(ctx, selectCollectionSizesSQL)
+func (db *Database) generateTableQueryMap(ctx context.Context, conn *pgx.Conn) (map[string]string, error) {
+	// Get all tablenames
+	tablenames, err := conn.Query(ctx, selectAllTableNames)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var size int
-		var col string
-		if err := rows.Scan(&size, &col); err != nil {
-			return nil, err
-		}
-		cols[col] = make(map[int]*entry, size)
+	defer tablenames.Close()
+
+	// Construct Query Map
+	queryMap := make(map[string]string)
+
+	for tablenames.Next() {
+		// Scan tablename
+		var tablename string
+		tablenames.Scan(&tablename)
+
+		// Create SQL Query
+		constructedSQLStatement := strings.Replace(selectTableContentTemplate, "$1", tablename, -1)
+
+		// Add to queryMap
+		queryMap[tablename] = constructedSQLStatement
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return cols, nil
+
+	return queryMap, nil
 }
 
 func (db *Database) fill(handler eventHandler) error {
@@ -250,58 +305,79 @@ func (db *Database) fill(handler eventHandler) error {
 	}
 
 	return db.run(func(ctx context.Context, conn *pgx.Conn) error {
-		cols, err := preAllocCollections(ctx, conn)
+		queryMap, err := db.generateTableQueryMap(ctx, conn)
 		if err != nil {
 			return err
 		}
-		rows, err := conn.Query(ctx, selectAllSQL)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		var numEntries, size int
 
-		for rows.Next() {
-			var (
-				fqid    string
-				data    []byte
-				updated time.Time
-			)
-			if err := rows.Scan(&fqid, &data, &updated); err != nil {
-				return err
-			}
-			col, id, err := splitFqid(fqid)
+		for tablename, query := range queryMap {
+			var numEntries, size int
+
+			// Alter tablename to conform meta models
+			tablename := strings.TrimSuffix(tablename, "_t")
+
+			rows, err := conn.Query(ctx, query)
 			if err != nil {
-				log.Warnf("error: %v\n", err)
-				continue
-			}
-			collection := cols[col]
-			if collection == nil {
-				log.Warnf("alloc collection %q. This should has happend before.\n", col)
-				collection = make(map[int]*entry)
-				cols[col] = collection
-			}
-			if err := handler(addedEvent, col, id, data); err != nil {
 				return err
 			}
+			defer rows.Close()
 
-			size += len(data)
+			// Get column names of table
+			descriptions := rows.FieldDescriptions()
+			columns := make([]string, len(descriptions))
 
-			collection[id] = &entry{
-				updated: updated,
+			for i, description := range descriptions {
+				columns[i] = description.Name
 			}
 
-			numEntries++
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		log.Debugf("num entries: %d / size: %d (%.2fMiB)\n",
-			numEntries,
-			size, float64(size)/(1024*1024))
+			for rows.Next() {
+				values, err := rows.Values()
+				if err != nil {
+					return err
+				}
+				// Assign data
+				data := make(map[string]any, len(values))
+				var id int32
+				id = -1
 
-		log.Debugf("num collections: %d\n", len(cols))
-		db.collections = cols
+				for i, v := range values {
+					if columns[i] == "id" {
+						if val, ok := v.(int32); ok {
+							id = val
+						} else {
+							return fmt.Errorf("%v is not an int32", v)
+						}
+						continue
+					}
+					data[columns[i]] = v
+				}
+				log.Debugf("Fill %s: %d datapoints for id %d ", tablename, len(data), id)
+
+				if id == -1 {
+					// Discard this table
+					log.Info(tablename + " discarded, for there is no id column found")
+					continue
+				}
+
+				// Handle Data
+				if err := handler(addedEvent, tablename, int(id), data); err != nil {
+					return err
+				}
+
+				size += len(data)
+
+				numEntries++
+
+				if err := rows.Err(); err != nil {
+					return err
+				}
+
+				log.Debugf("num entries: %d / size: %d (%.2fMiB)\n",
+					numEntries,
+					size, float64(size)/(1024*1024))
+			}
+		}
+
 		db.last = start
 		return nil
 	})
