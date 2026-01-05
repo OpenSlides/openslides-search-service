@@ -7,7 +7,7 @@ require (
 	github.com/blevesearch/bleve/v2 v2.5.7
 	github.com/buger/jsonparser v1.1.1
 	github.com/goccy/go-yaml v1.19.0
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/sys v0.39.0
 )
@@ -43,7 +43,6 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/ostcar/topic v0.6.0 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
