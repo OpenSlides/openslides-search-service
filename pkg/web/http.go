@@ -108,7 +108,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 
 		userID := c.auth.FromContext(r.Context())
 		requestBody := c.autoupdateRequestFromFQIDs(answers)
-
 		if len(requestBody) == 0 {
 			if _, err := w.Write([]byte("{}")); err != nil {
 				log.Errorf("error: writing response failed: %v\n", err)
@@ -158,7 +157,6 @@ func (c *controller) search(w http.ResponseWriter, r *http.Request) {
 		if _, err := w.Write(filteredResp); err != nil {
 			log.Errorf("error: writing response failed: %v\n", err)
 		}
-
 		return
 	}
 
@@ -192,7 +190,6 @@ func transformRestricterResponse(answers map[string]search.Answer, body io.ReadC
 	transformed := make(map[string]resultEntry)
 	for k, v := range restricterResponse {
 		parts := strings.Split(k, "/")
-
 		if len(parts) >= 3 {
 			fqid := parts[0] + "/" + parts[1]
 			field := parts[2]
@@ -210,7 +207,6 @@ func transformRestricterResponse(answers map[string]search.Answer, body io.ReadC
 					Score:        score,
 				}
 			}
-
 			transformed[fqid].Content[field] = v
 		}
 	}

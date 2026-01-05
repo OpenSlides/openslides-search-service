@@ -336,7 +336,6 @@ func (ti *TextIndex) build() error {
 			return nil
 		}
 		fqid := col + "/" + strconv.Itoa(id)
-
 		bt := newBleveType(col)
 		bt.fill(mcol.Fields, data)
 
@@ -468,7 +467,6 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	if err != nil {
 		return nil, err
 	}
-
 	log.Infof("number hits: %d\n", len(result.Hits))
 	dupes := map[string]struct{}{}
 	answers := make(map[string]Answer, len(result.Hits))
@@ -476,7 +474,6 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 
 	for i := range result.Hits {
 		fqid := result.Hits[i].ID
-
 		if _, ok := dupes[fqid]; ok {
 			numDupes++
 			continue
