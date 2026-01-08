@@ -8,8 +8,9 @@ package search
 import (
 	"context"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 )
