@@ -474,6 +474,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 
 	for i := range result.Hits {
 		fqid := result.Hits[i].ID
+
 		if _, ok := dupes[fqid]; ok {
 			numDupes++
 			continue
@@ -491,6 +492,7 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 			Score:        result.Hits[i].Score,
 			MatchedWords: matchedWords,
 		}
+		log.Debugf("Hit %s - %v", fqid, matchedWords)
 		log.Debugf("Hit %s - %v", fqid, matchedWords)
 	}
 	log.Debugf("number of duplicates: %d\n", numDupes)
