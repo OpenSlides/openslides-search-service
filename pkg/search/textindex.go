@@ -493,7 +493,6 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 			MatchedWords: matchedWords,
 		}
 		log.Debugf("Hit %s - %v", fqid, matchedWords)
-		log.Debugf("Hit %s - %v", fqid, matchedWords)
 	}
 	log.Debugf("number of duplicates: %d\n", numDupes)
 	return answers, nil
