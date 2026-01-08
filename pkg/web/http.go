@@ -210,7 +210,6 @@ func transformRestricterResponse(answers map[string]search.Answer, body io.ReadC
 					Score:        score,
 				}
 			}
-
 			transformed[fqid].Content[field] = v
 		}
 	}
