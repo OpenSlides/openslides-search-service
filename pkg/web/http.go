@@ -336,6 +336,10 @@ func Run(
 		"/system/search",
 		authMiddleware(http.HandlerFunc(c.search), auth))
 
+	mux.Handle(
+		"/system/search/health",
+		http.HandlerFunc(healthHandler()))
+
 	addr := fmt.Sprintf("%s:%d", cfg.Web.Host, cfg.Web.Port)
 	log.Infof("listen web on %s\n", addr)
 
