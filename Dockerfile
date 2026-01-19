@@ -77,3 +77,5 @@ EXPOSE 9050
 ENTRYPOINT ["./entrypoint.sh"]
 
 CMD exec ./openslides-search-service
+
+HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1
