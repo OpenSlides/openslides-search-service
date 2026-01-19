@@ -31,6 +31,8 @@ COPY meta/models.yml .
 ## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
 
+HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1
+
 ## Command
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"
 
@@ -77,3 +79,5 @@ EXPOSE 9050
 ENTRYPOINT ["./entrypoint.sh"]
 
 CMD exec ./openslides-search-service
+
+HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1
