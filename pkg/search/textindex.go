@@ -231,16 +231,18 @@ func (bt bleveType) fill(fields map[string]*meta.Member, data map[string]any) {
 			}
 		case "number[]":
 			bt[fname] = []int64{}
-			arr := data[fname].([]int64)
-			for _, value := range arr {
-				bt[fname] = append(bt[fname].([]int64), value)
+			if arr, ok := data[fname].([]int64); ok {
+				for _, value := range arr {
+					bt[fname] = append(bt[fname].([]int64), value)
+				}
 			}
 			continue
 		case "json-int-string-map":
 			bt[fname] = []string{}
-			arr := data[fname].([]string)
-			for _, value := range arr {
-				bt[fname] = append(bt[fname].([]string), value)
+			if arr, ok := data[fname].([]string); ok {
+				for _, value := range arr {
+					bt[fname] = append(bt[fname].([]string), value)
+				}
 			}
 			continue
 		default:
