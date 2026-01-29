@@ -231,7 +231,9 @@ func (db *Database) update(handler eventHandler) error {
 
 					if id == -1 {
 						// Discard this table
-						log.Info(tablename + " discarded, for there is no id column found")
+						if len(tablename) >= 2 && tablename[:2] != "nm" && tablename[:2] != "gm" {
+							log.Info(tablename + " discarded, for there is no id column found")
+						}
 						continue
 					}
 
@@ -355,7 +357,9 @@ func (db *Database) fill(handler eventHandler) error {
 
 				if id == -1 {
 					// Discard this table
-					log.Info(tablename + " discarded, for there is no id column found")
+					if len(tablename) >= 2 && tablename[:2] != "nm" && tablename[:2] != "gm" {
+						log.Info(tablename + " discarded, for there is no id column found")
+					}
 					continue
 				}
 
