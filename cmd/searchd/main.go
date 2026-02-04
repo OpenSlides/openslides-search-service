@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"runtime"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-go/auth"
@@ -89,8 +90,16 @@ func run(cfg *config.Config) error {
 	lookup := new(environment.ForProduction)
 	// Redis as message bus for datastore and logout events.
 	messageBus := redis.New(lookup)
+
+	// Database pool for auth OIDC user lookup.
+	dbPool, err := pgxpool.New(ctx, cfg.Database.ConnectionURL())
+	if err != nil {
+		return fmt.Errorf("creating database pool: %w", err)
+	}
+	defer dbPool.Close()
+
 	// Auth Service.
-	authService, authBackground, err := auth.New(lookup, messageBus)
+	authService, authBackground, err := auth.New(lookup, messageBus, dbPool)
 	if err != nil {
 		return err
 	}

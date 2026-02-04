@@ -164,3 +164,13 @@ func (db *Database) ConnectionConfig() string {
 		db.Port,
 		pgEncode(db.Database))
 }
+
+// ConnectionURL returns a postgres connection URL.
+func (db *Database) ConnectionURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
+		db.User,
+		db.Password,
+		db.Host,
+		db.Port,
+		db.Database)
+}
