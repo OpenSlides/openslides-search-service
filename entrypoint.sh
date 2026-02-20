@@ -1,12 +1,12 @@
 #!/bin/sh
 
-if [ ! $ANONYMOUS_ONLY -a $DATASTORE_WRITER_HOST -a $DATASTORE_WRITER_PORT ]; then
-    while ! nc -z "$DATASTORE_WRITER_HOST" "$DATASTORE_WRITER_PORT"; do
-        echo "waiting for $DATASTORE_WRITER_HOST:$DATASTORE_WRITER_PORT"
+if [ ! $ANONYMOUS_ONLY -a $DATABASE_HOST -a $DATABASE_PORT ]; then
+    while ! nc -z "$DATABASE_HOST" "$DATABASE_PORT"; do
+        echo "waiting for $DATABASE_HOST:$DATABASE_PORT"
         sleep 1
     done
 
-    echo "$DATASTORE_WRITER_HOST:$DATASTORE_WRITER_PORT is available"
+    echo "$DATABASE_HOST:$DATABASE_PORT is available"
 fi
 
 exec "$@"
