@@ -17,17 +17,40 @@ while getopts "s" FLAG; do
 done
 
 # Setup
-CONTAINER_NAME="search-tests"
-IMAGE_TAG=openslides-search-tests
 LOCAL_PWD=$(dirname "$0")
 
+if [ -n "$1" ]
+then
+    COMPOSE_BRANCH=$(git -C "$SERVICE_FOLDER" branch --show-current)
+else
+    COMPOSE_BRANCH="main"
+fi
+
+# Helpers
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+DC="CONTEXT=tests USER_ID=$USER_ID GROUP_ID=$GROUP_ID COMPOSE_REFERENCE_BRANCH=$COMPOSE_BRANCH docker compose -f $LOCAL_PWD/../dev/docker-compose.dev.yml"
+
 # Safe Exit
-trap 'docker stop "$CONTAINER_NAME" &> /dev/null && docker rm "$CONTAINER_NAME" &> /dev/null' EXIT
+trap 'eval "$DC down --volumes"' EXIT INT TERM
 
 # Execution
 if [ -z "$SKIP_BUILD" ]; then make build-tests &> /dev/null; fi
-docker run -d --privileged --name "$CONTAINER_NAME" ${IMAGE_TAG}
-docker exec "$CONTAINER_NAME" ./dev/container-tests.sh
+eval "$DC up -d"
+
+## Setup database
+if [ -z "$SKIP_WAIT_FOR_PSQL" ]
+then
+  until pg_isready -h "$DATABASE_HOST" -p "$DATABASE_PORT" -U "$DATABASE_USER"; do
+    echo "Waiting for Postgres server '$DATABASE_HOST' to become available..."
+    sleep 3
+  done
+fi
+eval "$DC exec search bash dev/create-models.sh"
+
+## Execute tests
+eval "$DC exec search go test -timeout 60s -race ./..."
+
 
 # Linters
 bash "$LOCAL_PWD"/run-lint.sh -s
