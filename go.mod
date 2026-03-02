@@ -86,3 +86,5 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
+
+replace github.com/OpenSlides/openslides-go => github.com/kryptance/openslides-go v0.0.0-20260302114458-fb92ee282ee8
