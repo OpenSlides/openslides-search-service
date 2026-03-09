@@ -8,7 +8,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/sirupsen/logrus v1.9.4
-	golang.org/x/sys v0.41.0
+	golang.org/x/sys v0.42.0
 )
 
 require (
