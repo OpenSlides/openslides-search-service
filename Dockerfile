@@ -15,6 +15,7 @@ RUN go mod download
 
 COPY cmd cmd
 COPY pkg pkg
+COPY meta meta
 
 ## External Information
 EXPOSE 9050
@@ -28,8 +29,6 @@ RUN apk add make bash-completion postgresql-client
 
 COPY entrypoint.sh ./
 COPY meta/search.yml ./
-COPY meta/models.yml ./
-COPY meta ./meta
 COPY dev/mock_data.sql ./dev/mock_data.sql
 COPY dev/create-models.sh ./dev/create-models.sh
 
@@ -70,7 +69,6 @@ ENV APP_CONTEXT=prod
 
 COPY entrypoint.sh /
 COPY meta/search.yml /
-COPY meta/models.yml /
 COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
