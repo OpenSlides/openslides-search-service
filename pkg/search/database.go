@@ -339,9 +339,8 @@ func (db *Database) fill(handler eventHandler) error {
 				}
 				// Assign data
 				data := make(map[string]any, len(values))
-				var id int32
-				id = -1
 
+				id := int32(-1)
 				for i, v := range values {
 					if columns[i] == "id" {
 						if val, ok := v.(int32); ok {

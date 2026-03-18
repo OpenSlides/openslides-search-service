@@ -291,7 +291,6 @@ func TestDatabaseUpdate(t *testing.T) {
 
 	// Setup text index & database
 	ctrl, err := initIndex(t)
-
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
 	}
@@ -319,7 +318,7 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 
 	// Update database - change searchable object
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = 2", true)
+	err = pgConnCommand(t, ctrl, "UPDATE meeting_t SET welcome_text = 'text test' WHERE id = 2", true)
 
 	if err != nil {
 		t.Errorf("Error updating postgres database: %s", err)
@@ -345,7 +344,7 @@ func TestDatabaseUpdate(t *testing.T) {
 	})
 
 	// Update database - add new searchable object
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, `
+	err = pgConnCommand(t, ctrl, `
 INSERT INTO topic_t (id, title, text, sequential_number, meeting_id)
 VALUES (3, 'West Land', 'A western', 2, 2);
 SELECT nextval('topic_t_id_seq');
@@ -380,7 +379,7 @@ VALUES ('topic/3', 2);`, true)
 	})
 
 	// Update database - delete searchable object
-	err = pgConnCommand(t, ctrl.PostgresTest, ctrl.Context, `
+	err = pgConnCommand(t, ctrl, `
 DELETE FROM agenda_item_t WHERE content_object_id = 'topic/3';
 DELETE FROM list_of_speakers_t WHERE id = 3;
 DELETE FROM topic_t WHERE id = 3;
@@ -474,8 +473,8 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 	}
 
 	// Add mock data
-	sqlFromFile(t, ctx, pg, "../../meta/dev/sql/test_data.sql")
-	sqlFromFile(t, ctx, pg, "../../dev/mock_data.sql")
+	sqlFromFile(t, pg, "../../meta/dev/sql/test_data.sql")
+	sqlFromFile(t, pg, "../../dev/mock_data.sql")
 
 	// Create database and text index
 	db := NewDatabase(cfg)
@@ -489,8 +488,7 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 	return &testTextIndexController{ti, pg, ctx}, nil
 }
 
-func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, path string) error {
-
+func sqlFromFile(t *testing.T, pg *pgtest.PostgresTest, path string) error {
 	// Read sql content
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -498,8 +496,9 @@ func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, pat
 		return err
 	}
 
-	conn, err := pg.Conn(ctx)
+	ctx := t.Context()
 
+	conn, err := pg.Conn(ctx)
 	if err != nil {
 		t.Errorf("getting pgx connection for path %s: %s", path, err)
 		return err
@@ -513,7 +512,6 @@ func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, pat
 	defer conn.Close(ctx)
 
 	_, err = conn.Exec(ctx, string(file))
-
 	if err != nil {
 		t.Errorf("adding mock data for path %s: %s", path, err)
 		return err
@@ -522,9 +520,9 @@ func sqlFromFile(t *testing.T, ctx context.Context, pg *pgtest.PostgresTest, pat
 	return nil
 }
 
-func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, cmd string, execMode bool) error {
-	conn, err := pg.Conn(ctx)
-
+func pgConnCommand(t *testing.T, ctrl *testTextIndexController, cmd string, execMode bool) error {
+	ctx := ctrl.Context
+	conn, err := ctrl.PostgresTest.Conn(ctx)
 	if err != nil {
 		t.Errorf("getting pgx connection for command %s: %s", cmd, err)
 		return err
@@ -539,14 +537,12 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 
 	if execMode {
 		_, err := tx.Exec(ctx, cmd)
-
 		if err != nil {
 			t.Errorf("adding mock data for command %s: %s", cmd, err)
 			return err
 		}
 
 		err = tx.Commit(ctx)
-
 		if err != nil {
 			t.Errorf("adding mock data for command %s: %s", cmd, err)
 			return err
@@ -554,7 +550,6 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 	} else {
 		// Query command for debugging purposes
 		rows, err := tx.Query(ctx, cmd)
-
 		if err != nil {
 			t.Errorf("adding mock data for command %s: %s", cmd, err)
 			return err
@@ -564,7 +559,6 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 		// Get column names of table
 		descriptions := rows.FieldDescriptions()
 		columns := make([]string, len(descriptions))
-
 		for i, description := range descriptions {
 			columns[i] = description.Name
 		}
@@ -579,7 +573,7 @@ func pgConnCommand(t *testing.T, pg *pgtest.PostgresTest, ctx context.Context, c
 			// Assign data
 			data := make(map[string]any, len(values))
 			log.Infof("New Row %d", ticker)
-			ticker += 1
+			ticker++
 
 			for i, v := range values {
 				data[columns[i]] = v
