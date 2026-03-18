@@ -225,7 +225,13 @@ func (bt bleveType) fill(fields map[string]*meta.Member, data map[string]any) {
 				continue
 			}
 		case "relation", "number":
-			if v, ok := data[fname].(int); ok {
+			if v, ok := data[fname].(int32); ok {
+				bt[fname] = v
+				continue
+			} else if v, ok := data[fname].(int64); ok {
+				bt[fname] = v
+				continue
+			} else if v, ok := data[fname].(int); ok {
 				bt[fname] = v
 				continue
 			}
@@ -426,13 +432,15 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	}
 	wildcardQuery := bleve.NewQueryStringQuery(wildcardQuestion.String())
 
-	var q query.Query
 	matchQueryOriginal := bleve.NewQueryStringQuery(question)
 	matchQueryOriginal.SetBoost(5)
+
 	fuzzyMatchQuery := bleve.NewMatchQuery(question)
 	fuzzyMatchQuery.SetAutoFuzziness(true)
+
 	matchQuery := bleve.NewDisjunctionQuery(matchQueryOriginal, wildcardQuery, fuzzyMatchQuery)
 
+	var q query.Query
 	if meetingID > 0 {
 		fmid := float64(meetingID)
 		meetingIDQuery := newNumericQuery(fmid)
@@ -465,11 +473,12 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 	request := bleve.NewSearchRequest(q)
 	request.IncludeLocations = true
 	request.Size = 100
+
 	result, err := ti.index.Search(request)
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("number hits: %d\n", len(result.Hits))
+
 	dupes := map[string]struct{}{}
 	answers := make(map[string]Answer, len(result.Hits))
 	numDupes := 0
@@ -489,13 +498,16 @@ func (ti *TextIndex) Search(question string, collections []string, meetingID int
 				matchedWords[location] = append(matchedWords[location], word)
 			}
 		}
+
 		dupes[fqid] = struct{}{}
 		answers[fqid] = Answer{
 			Score:        result.Hits[i].Score,
 			MatchedWords: matchedWords,
 		}
+
 		log.Debugf("Hit %s - %v", fqid, matchedWords)
 	}
+
 	log.Debugf("number of duplicates: %d\n", numDupes)
 	return answers, nil
 }
