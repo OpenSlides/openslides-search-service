@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/OpenSlides/openslides-go/auth"
+	"github.com/OpenSlides/openslides-go/collection"
 	"github.com/OpenSlides/openslides-go/datastore/pgtest"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
 	"github.com/OpenSlides/openslides-search-service/pkg/meta"
@@ -421,7 +422,13 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 
 	ctx := t.Context()
 
-	models, err := meta.Fetch[meta.Collections]("../../meta/models.yml")
+	collections, err := collection.Collections("../../meta")
+	if err != nil {
+		t.Errorf("loading models failed: %s", err)
+		return nil, err
+	}
+
+	models := meta.NewCollections(collections)
 	if err != nil {
 		t.Errorf("loading models failed: %s", err)
 		return nil, err
