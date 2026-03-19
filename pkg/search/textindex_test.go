@@ -494,7 +494,6 @@ func (tindex *testTextIndexController) closeIndex() {
 
 	// Delete search.bleve folder
 	tindex.TextIndex.Close()
-
 }
 
 func sqlFromFile(t *testing.T, pg *pgtest.PostgresTest, path string) error {
