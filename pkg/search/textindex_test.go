@@ -130,7 +130,7 @@ func TestUnrestrictedOutput(t *testing.T) {
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
 	}
-	defer ctrl.PostgresTest.Close()
+	defer ctrl.closeIndex()
 
 	t.Run("Check output of unrestricted search queries", func(t *testing.T) {
 		for _, output := range outputs {
@@ -294,7 +294,7 @@ func TestDatabaseUpdate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Couldn't init index %s", err)
 	}
-	defer ctrl.PostgresTest.Close()
+	defer ctrl.closeIndex()
 
 	// Update Textindex
 	ctrl.TextIndex.db.cfg.Index.Age = 0 // Force update
@@ -486,6 +486,14 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 
 	closePG = false
 	return &testTextIndexController{ti, pg, ctx}, nil
+}
+
+func (tindex *testTextIndexController) closeIndex() {
+	// Close postgres test
+	tindex.PostgresTest.Close()
+
+	// Delete search.bleve folder
+	tindex.TextIndex.Close()
 }
 
 func sqlFromFile(t *testing.T, pg *pgtest.PostgresTest, path string) error {
