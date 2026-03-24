@@ -69,6 +69,7 @@ ENV APP_CONTEXT=prod
 
 COPY entrypoint.sh /
 COPY meta/search.yml /
+COPY meta meta
 COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
