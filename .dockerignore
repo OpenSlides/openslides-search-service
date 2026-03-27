@@ -1,2 +1,5 @@
 search-service/node_modules
 search-service/npm-debug.log
+meta/dev/
+meta/.git
+meta/.github
