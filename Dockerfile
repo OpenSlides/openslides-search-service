@@ -57,11 +57,21 @@ RUN apk add --no-cache \
 STOPSIGNAL SIGKILL
 CMD ["sleep", "inf"]
 
+#base for use with local openslides-go
+FROM base AS base-gowork
+COPY ./lib ../lib
+COPY ./autoupdate.work ../go.work
+
+#builder with local openslides-go
+FROM base-gowork AS builder-gowork
+RUN go build -o openslides-search-service ./cmd/searchd/main.go
+
 # Production Image
 FROM base AS builder
 RUN go build -o openslides-search-service ./cmd/searchd/main.go
 
-FROM alpine:3 AS prod
+#prepare production image
+FROM alpine:3 AS pre-prod
 
 ## Setup
 ARG CONTEXT
@@ -70,7 +80,6 @@ ENV APP_CONTEXT=prod
 COPY entrypoint.sh /
 COPY meta/search.yml /
 COPY meta meta
-COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
 LABEL org.opencontainers.image.title="OpenSlides Search Service"
@@ -86,3 +95,13 @@ ENTRYPOINT ["./entrypoint.sh"]
 CMD exec ./openslides-search-service
 
 HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1
+
+#finalize prod build with local openslides-go
+FROM pre-prod AS prod-gowork
+
+COPY --from=builder-gowork /app/openslides-search-service/openslides-search-service /
+
+#finalize prod build
+FROM pre-prod AS prod
+
+COPY --from=builder /app/openslides-search-service/openslides-search-service /
