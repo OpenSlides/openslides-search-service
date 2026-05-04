@@ -60,7 +60,7 @@ CMD ["sleep", "inf"]
 #base for use with local openslides-go
 FROM base AS base-gowork
 COPY ./lib ../lib
-COPY ./autoupdate.work ../go.work
+COPY ./search.work ../go.work
 
 #builder with local openslides-go
 FROM base-gowork AS builder-gowork
