@@ -16,6 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/OpenSlides/openslides-go/auth"
+	"github.com/OpenSlides/openslides-go/collection"
 	"github.com/OpenSlides/openslides-go/environment"
 	"github.com/OpenSlides/openslides-go/redis"
 	"github.com/OpenSlides/openslides-search-service/pkg/config"
@@ -50,7 +51,12 @@ func run(cfg *config.Config) error {
 	ctx, cancel := signalContext()
 	defer cancel()
 
-	models, err := meta.Fetch[meta.Collections](cfg.Models.Models)
+	collections, err := collection.Collections("./meta")
+	if err != nil {
+		return fmt.Errorf("loading models failed: %w", err)
+	}
+
+	models := meta.NewCollections(collections)
 	if err != nil {
 		return fmt.Errorf("loading models failed: %w", err)
 	}

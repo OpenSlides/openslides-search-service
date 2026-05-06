@@ -6,33 +6,27 @@
 package meta
 
 import (
-	"fmt"
 	"io"
-	"net/http"
 	"os"
-	"strings"
 	"sync/atomic"
 
 	"github.com/goccy/go-yaml"
 )
 
 var (
-	modelNum  atomic.Int32
-	fieldNum  atomic.Int32
-	filterNum atomic.Int32
+	modelNum atomic.Int32
+	fieldNum atomic.Int32
 )
 
 func load[T any](r io.Reader) (T, error) {
 	dec := yaml.NewDecoder(r)
-	var tmp map[string]interface{}
+	var tmp map[string]any
 	if err := dec.Decode(&tmp); err != nil {
 		var n T
 		return n, err
 	}
 
-	if _, ok := tmp["_meta"]; ok {
-		delete(tmp, "_meta")
-	}
+	delete(tmp, "_meta")
 
 	cleanYml, err := yaml.Marshal(tmp)
 	if err != nil {
@@ -48,22 +42,8 @@ func load[T any](r io.Reader) (T, error) {
 	return t, nil
 }
 
-func fetchRemote[T any](path string) (T, error) {
-	resp, err := http.Get(path)
-	if err != nil {
-		var n T
-		return n, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		var n T
-		return n, fmt.Errorf("%s failed: %s (%d)",
-			path, http.StatusText(resp.StatusCode), resp.StatusCode)
-	}
-	defer resp.Body.Close()
-	return load[T](resp.Body)
-}
-
-func fetchLocal[T any](path string) (T, error) {
+// Fetch loads a meta model.
+func Fetch[T any](path string) (T, error) {
 	in, err := os.Open(path)
 	if err != nil {
 		var n T
@@ -71,14 +51,6 @@ func fetchLocal[T any](path string) (T, error) {
 	}
 	defer in.Close()
 	return load[T](in)
-}
-
-// Fetch loads a meta model.
-func Fetch[T any](path string) (T, error) {
-	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
-		return fetchRemote[T](path)
-	}
-	return fetchLocal[T](path)
 }
 
 func copyStrings(s []string) []string {
