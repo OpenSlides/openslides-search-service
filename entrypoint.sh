@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ ! $ANONYMOUS_ONLY -a $DATABASE_HOST -a $DATABASE_PORT ]; then
+if [ ! "$ANONYMOUS_ONLY" -a "$DATABASE_HOST" -a "$DATABASE_PORT" ]; then
     while ! nc -z "$DATABASE_HOST" "$DATABASE_PORT"; do
         echo "waiting for $DATABASE_HOST:$DATABASE_PORT"
         sleep 1
