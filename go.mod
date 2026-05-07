@@ -3,7 +3,7 @@ module github.com/OpenSlides/openslides-search-service
 go 1.26.0
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20260505133437-981fac297a9d
+	github.com/OpenSlides/openslides-go v0.0.0-20260507150803-595ed9da8e06
 	github.com/blevesearch/bleve/v2 v2.6.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.9.2
@@ -72,7 +72,7 @@ require (
 	github.com/opencontainers/runc v1.3.1 // indirect
 	github.com/ory/dockertest/v3 v3.12.0 // indirect
 	github.com/ostcar/topic v0.7.0 // indirect
-	github.com/rs/zerolog v1.35.0 // indirect
+	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
