@@ -47,3 +47,6 @@ yarn.lock
 # ignore database files
 database
 UserDatabase
+
+# Dynamically created files
+pkg/search/*

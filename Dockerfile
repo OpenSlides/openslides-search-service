@@ -1,6 +1,6 @@
 ARG CONTEXT=prod
 
-FROM golang:1.25.5-alpine AS base
+FROM golang:1.26.2-alpine AS base
 
 ## Setup
 ARG CONTEXT
@@ -15,6 +15,7 @@ RUN go mod download
 
 COPY cmd cmd
 COPY pkg pkg
+COPY meta meta
 
 ## External Information
 EXPOSE 9050
@@ -22,20 +23,26 @@ EXPOSE 9050
 # Development Image
 FROM base AS dev
 
+## Installs
 RUN ["go", "install", "github.com/githubnemo/CompileDaemon@latest"]
+RUN apk add make bash-completion postgresql-client
 
 COPY entrypoint.sh ./
-COPY meta/search.yml .
-COPY meta/models.yml .
+COPY meta/search.yml ./
+COPY dev/mock_data.sql ./dev/mock_data.sql
+COPY dev/create-models.sh ./dev/create-models.sh
+
 
 ## Entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
+
+HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1
 
 ## Command
 CMD CompileDaemon -log-prefix=false -build="go build -o openslides-search-service ./cmd/searchd/main.go" -command="./openslides-search-service"
 
 # Testing Image
-FROM base AS tests
+FROM dev AS tests
 
 COPY dev/container-tests.sh ./dev/container-tests.sh
 
@@ -52,7 +59,7 @@ CMD ["sleep", "inf"]
 
 # Production Image
 FROM base AS builder
-RUN go build -o openslides-search-service cmd/searchd/main.go
+RUN go build -o openslides-search-service ./cmd/searchd/main.go
 
 FROM alpine:3 AS prod
 
@@ -62,7 +69,7 @@ ENV APP_CONTEXT=prod
 
 COPY entrypoint.sh /
 COPY meta/search.yml /
-COPY meta/models.yml /
+COPY meta meta
 COPY --from=builder /app/openslides-search-service/openslides-search-service /
 
 ## External Information
@@ -77,3 +84,5 @@ EXPOSE 9050
 ENTRYPOINT ["./entrypoint.sh"]
 
 CMD exec ./openslides-search-service
+
+HEALTHCHECK CMD wget --spider -q http://localhost:9050/system/search/health || exit 1

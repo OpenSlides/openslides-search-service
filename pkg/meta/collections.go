@@ -5,8 +5,30 @@ import (
 	"io"
 	"sort"
 
+	"github.com/OpenSlides/openslides-go/collection"
 	"github.com/goccy/go-yaml"
 )
+
+// NewCollections creates a new Collections instance from openslides-go parsed collections
+func NewCollections(collections map[string]collection.Collection) Collections {
+	out := Collections{}
+	for name, col := range collections {
+		fields := map[string]*Member{}
+		for fName, field := range col.Fields {
+			fields[fName] = &Member{
+				Type:     field.Type,
+				Required: field.Required,
+			}
+		}
+
+		out[name] = &Collection{
+			Fields: fields,
+			Order:  modelNum.Add(1),
+		}
+	}
+
+	return out
+}
 
 // Collection is part of the meta model.
 type Collection struct {
