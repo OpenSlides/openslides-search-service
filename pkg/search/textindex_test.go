@@ -49,6 +49,10 @@ type mockController struct {
 	collRel   map[string]map[string]struct{}
 }
 
+func TestMain(m *testing.M) {
+	os.Exit(pgtest.RunTests(m))
+}
+
 func TestUnrestrictedOutput(t *testing.T) {
 	outputs := []OutputDataIndexQuery{
 		{
