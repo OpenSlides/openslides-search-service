@@ -49,6 +49,10 @@ type mockController struct {
 	collRel   map[string]map[string]struct{}
 }
 
+func TestMain(m *testing.M) {
+	os.Exit(pgtest.RunTests(m))
+}
+
 func TestUnrestrictedOutput(t *testing.T) {
 	outputs := []OutputDataIndexQuery{
 		{
@@ -449,17 +453,11 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 	}
 
 	// Create test postgres container
-	closePG := true
-	pg, err := pgtest.NewPostgresTest(ctx)
+	pg, err := pgtest.NewPostgresTest(t)
 	if err != nil {
 		t.Errorf("Error starting postgres: %s", err)
 		return nil, err
 	}
-	defer func() {
-		if closePG {
-			pg.Close()
-		}
-	}()
 
 	// Alter cfg to refer to test postgres container
 	cfg.Database.User = pg.Env["DATABASE_USER"]
@@ -484,14 +482,10 @@ func initIndex(t *testing.T) (*testTextIndexController, error) {
 		return nil, err
 	}
 
-	closePG = false
 	return &testTextIndexController{ti, pg, ctx}, nil
 }
 
 func (tindex *testTextIndexController) closeIndex() {
-	// Close postgres test
-	tindex.PostgresTest.Close()
-
 	// Delete search.bleve folder
 	tindex.TextIndex.Close()
 }
