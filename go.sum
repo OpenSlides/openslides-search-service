@@ -1,7 +1,7 @@
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
-github.com/OpenSlides/openslides-go v0.0.0-20260818073420-b2c85a1366da h1:dfgGBD+DfbRZWYEeFKUJ7ipOgcmVH1vF0EMasRR5UG8=
-github.com/OpenSlides/openslides-go v0.0.0-20260818073420-b2c85a1366da/go.mod h1:y0UWkj3ybJIz9Aya+ubaGezQHuDAfuXxwJFlVnhRlgw=
+github.com/OpenSlides/openslides-go v0.0.0-20260819093938-3605d03b3839 h1:2Wh75ziep3C4Bzd/q/uNGU3AW5aFPi/YF42DSwzzfE0=
+github.com/OpenSlides/openslides-go v0.0.0-20260819093938-3605d03b3839/go.mod h1:y0UWkj3ybJIz9Aya+ubaGezQHuDAfuXxwJFlVnhRlgw=
 github.com/RoaringBitmap/roaring/v2 v2.14.5 h1:ckd0o545JqDPeVJDgeFoaM21eBixUnlWfYgjE5VnyWw=
 github.com/RoaringBitmap/roaring/v2 v2.14.5/go.mod h1:eq4wdNXxtJIS/oikeCzdX1rBzek7ANzbth041hrU8Q4=
 github.com/bits-and-blooms/bitset v1.24.2 h1:M7/NzVbsytmtfHbumG+K2bremQPMJuqv1JD3vOaFxp0=
