@@ -3,7 +3,7 @@ module github.com/OpenSlides/openslides-search-service
 go 1.26.0
 
 require (
-	github.com/OpenSlides/openslides-go v0.0.0-20260914111945-54a40e4ad516
+	github.com/OpenSlides/openslides-go v0.0.0-20260914113122-b8fc5dcb5833
 	github.com/blevesearch/bleve/v2 v2.6.1
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.11.0
@@ -69,7 +69,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
