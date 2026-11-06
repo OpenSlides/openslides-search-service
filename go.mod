@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/OpenSlides/openslides-go v0.0.0-20261106073320-ebf4e1bb74ef
-	github.com/blevesearch/bleve/v2 v2.6.1
+	github.com/blevesearch/bleve/v2 v2.6.2
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/sirupsen/logrus v1.10.2
@@ -16,7 +16,7 @@ require (
 	github.com/RoaringBitmap/roaring/v2 v2.14.5 // indirect
 	github.com/bits-and-blooms/bitset v1.24.2 // indirect
 	github.com/blevesearch/bleve_index_api v1.4.1 // indirect
-	github.com/blevesearch/geo v0.2.6 // indirect
+	github.com/blevesearch/geo v0.2.7-0.20260831141219-9c3e3a4d84bc // indirect
 	github.com/blevesearch/go-faiss v1.1.5 // indirect
 	github.com/blevesearch/go-porterstemmer v1.0.3 // indirect
 	github.com/blevesearch/gtreap v0.1.1 // indirect
@@ -25,14 +25,14 @@ require (
 	github.com/blevesearch/segment v0.9.1 // indirect
 	github.com/blevesearch/snowballstem v0.9.0 // indirect
 	github.com/blevesearch/upsidedown_store_api v1.0.2 // indirect
-	github.com/blevesearch/vellum v1.2.0 // indirect
+	github.com/blevesearch/vellum v1.2.1 // indirect
 	github.com/blevesearch/zapx/v11 v11.4.3 // indirect
 	github.com/blevesearch/zapx/v12 v12.4.3 // indirect
 	github.com/blevesearch/zapx/v13 v13.4.3 // indirect
 	github.com/blevesearch/zapx/v14 v14.4.3 // indirect
 	github.com/blevesearch/zapx/v15 v15.4.3 // indirect
 	github.com/blevesearch/zapx/v16 v16.3.4 // indirect
-	github.com/blevesearch/zapx/v17 v17.2.3 // indirect
+	github.com/blevesearch/zapx/v17 v17.2.4 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
